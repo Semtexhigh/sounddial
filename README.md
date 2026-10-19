@@ -38,10 +38,14 @@ Nothing is installed on the user's machine except the app.
 | Linux | `ubuntu-22.04` | `SoundDial_1.0.0_amd64.AppImage` + `.deb` |
 
 **Release procedure (GitHub Actions does all four):** tag a version (`v1.0.0`) or run the *release* workflow by hand.
-~15 minutes later the Release page has all installers; `site/index.html` (GitHub Pages) detects the visitor's OS and offers the right one.
+~15 minutes later the Release page has all installers; `docs/index.html` (GitHub Pages) detects the visitor's OS and offers the right one.
 
 macOS builds are unsigned by design. The workflow signs automatically only if `APPLE_*` secrets exist; nothing else changes.
-First launch on macOS: right-click the app → Open → Open, or `xattr -dr com.apple.quarantine /Applications/SoundDial.app`.
+First launch on macOS shows *"SoundDial is damaged and can't be opened"* — that is Gatekeeper refusing a non-Apple-signed app, not a broken file. Drag the app into Applications, then run once in Terminal:
+
+```
+xattr -cr /Applications/SoundDial.app && codesign --force --deep --sign - /Applications/SoundDial.app && open /Applications/SoundDial.app
+```
 
 **Local build** (any OS, needs Rust + Node + Python):
 
@@ -54,7 +58,7 @@ npm install && npm run build       # → src-tauri/target/release/bundle/…
 ```
 
 Layout: `src-tauri/` (Rust shell: tray, window, sidecar lifecycle, `tauri.conf.json`, entitlements),
-`dist/index.html` (copy of `sounddial.html` made by `npm run dist`), `.github/workflows/release.yml`, `site/` (download page).
+`dist/index.html` (copy of `sounddial.html` made by `npm run dist`), `.github/workflows/release.yml`, `docs/` (download page).
 
 ## The HTML app — `sounddial.html`
 
@@ -106,7 +110,7 @@ macos_helper/                SoundDialHelper.swift (Core Audio process taps, mac
 src-tauri/                   Tauri 2 desktop shell
 tools/make_icons.py          icon generator (app, tray, Tauri set)
 tools/build_engine.py        PyInstaller sidecar build
-site/                        download page (GitHub Pages)
+docs/                        download page (GitHub Pages)
 tests/test_mixer.py          logic tests
 main.py + sounddial/ui/      alternative Qt tray front-end on the same backends
 ```
