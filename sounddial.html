@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="mono" data-density="normal">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0e0e0e">
+<title>SoundDial</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23111'/%3E%3Cpath d='M6 15.5A5.5 5.5 0 1 1 15.5 15.5' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M10 10l2.6-2.6' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3Crect x='16' y='14' width='1.6' height='4' rx='.8' fill='%23fff'/%3E%3Crect x='18.4' y='11' width='1.6' height='7' rx='.8' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+/* ============================================================================
+   SoundDial — single-file HTML app
+   One mono font. Greyscale only. Hierarchy by weight, contrast and space.
+   ============================================================================ */
+:root{
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono", monospace;
+  --ease: cubic-bezier(.22,1,.36,1);
+  --spring: cubic-bezier(.34,1.56,.64,1);
+  --t-fast: .16s;
+  --t-mid: .28s;
+  --radius: 10px;
+  --gap: 12px;
+  --row-pad: 12px;
+  --bar-h: 72px;
+  /* greyscale tokens — the mono (dark) theme */
+  --bg: #0e0e0e;
+  --bg-2: #161616;
+  --bg-3: #1f1f1f;
+  --bg-4: #2a2a2a;
+  --line: #2a2a2a;
+  --line-2: #3a3a3a;
+  --fg: #f2f2f2;
+  --fg-2: #a0a0a0;
+  --fg-3: #5e5e5e;
+  --ink: #ffffff;
+  --ink-fg: #000000;
+  --track: #2a2a2a;
+  --fill: #e6e6e6;
+  --boost: #8a8a8a;
+  --vu: #b0b0b0;
+  --shadow: 0 12px 40px rgba(0,0,0,.55);
+}
+html[data-theme="light"]{
+  --bg:#fafafa; --bg-2:#ffffff; --bg-3:#f1f1f1; --bg-4:#e6e6e6; --line:#e2e2e2; --line-2:#cfcfcf;
+  --fg:#111111; --fg-2:#5e5e5e; --fg-3:#9a9a9a; --ink:#111111; --ink-fg:#ffffff;
+  --track:#e3e3e3; --fill:#1a1a1a; --boost:#777777; --vu:#4a4a4a; --shadow:0 12px 40px rgba(0,0,0,.14);
+}
+html[data-theme="contrast"]{
+  --bg:#000000; --bg-2:#000000; --bg-3:#111111; --bg-4:#222222; --line:#ffffff; --line-2:#ffffff;
+  --fg:#ffffff; --fg-2:#dddddd; --fg-3:#999999; --ink:#ffffff; --ink-fg:#000000;
+  --track:#333333; --fill:#ffffff; --boost:#bbbbbb; --vu:#ffffff; --shadow:none; --radius:4px;
+}
+html[data-theme="paper"]{
+  --bg:#efefef; --bg-2:#f8f8f8; --bg-3:#e9e9e9; --bg-4:#dcdcdc; --line:#d2d2d2; --line-2:#bcbcbc;
+  --fg:#1c1c1c; --fg-2:#555555; --fg-3:#8c8c8c; --ink:#222222; --ink-fg:#ffffff;
+  --track:#d6d6d6; --fill:#2a2a2a; --boost:#6e6e6e; --vu:#505050; --shadow:0 10px 30px rgba(0,0,0,.12); --radius:14px;
+}
+html[data-theme="graphite"]{
+  --bg:#1c1c1e; --bg-2:#242426; --bg-3:#2c2c2e; --bg-4:#363638; --line:#3a3a3c; --line-2:#48484a;
+  --fg:#f5f5f7; --fg-2:#a1a1a6; --fg-3:#6e6e73; --ink:#f5f5f7; --ink-fg:#1c1c1e;
+  --track:#3a3a3c; --fill:#d8d8dc; --boost:#8e8e93; --vu:#aeaeb2; --shadow:0 12px 40px rgba(0,0,0,.5); --radius:12px;
+}
+html[data-density="compact"]{ --row-pad:7px; --gap:8px; }
+html[data-density="relaxed"]{ --row-pad:16px; --gap:16px; }
+
+*,*::before,*::after{ box-sizing:border-box; }
+html,body{ margin:0; min-height:100%; background:var(--bg); color:var(--fg); font:14px/1.55 var(--mono); font-variant-numeric:tabular-nums; -webkit-font-smoothing:antialiased; }
+body{ padding-bottom:calc(var(--bar-h) + env(safe-area-inset-bottom,0px)); overscroll-behavior-y:contain; }
+button,input,select,textarea{ font:inherit; color:inherit; }
+button{ cursor:pointer; background:none; border:0; padding:0; }
+a{ color:inherit; }
+::selection{ background:var(--ink); color:var(--ink-fg); }
+:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
+.sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+/* ---- shell ---------------------------------------------------------------- */
+.shell{ max-width:560px; margin:0 auto; padding:14px 16px 0; }
+.hdr{ display:flex; align-items:center; gap:10px; padding:4px 0 12px; }
+.hdr .logo{ width:26px; height:26px; flex:none; }
+.hdr h1{ font-size:16px; font-weight:700; letter-spacing:.3px; margin:0; }
+.hdr .ver{ color:var(--fg-3); font-size:11px; margin-left:-4px; }
+.hdr .sp{ flex:1; }
+.lamp{ display:inline-flex; align-items:center; gap:6px; font-size:11px; color:var(--fg-2); padding:3px 9px; border:1px solid var(--line); border-radius:999px; background:var(--bg-2); transition:border-color var(--t-fast) var(--ease); }
+.lamp i{ width:7px; height:7px; border-radius:50%; background:var(--fg-3); flex:none; transition:background var(--t-mid) var(--ease), box-shadow var(--t-mid) var(--ease); }
+.lamp.on i{ background:var(--ink); box-shadow:0 0 0 3px color-mix(in srgb, var(--ink) 18%, transparent); }
+.lamp.demo i{ background:var(--fg-2); }
+.lamp.off i{ background:transparent; border:1px solid var(--fg-3); }
+.chip{ display:inline-flex; align-items:center; gap:6px; font-size:11px; padding:4px 10px; border:1px solid var(--line-2); border-radius:999px; background:var(--bg-3); color:var(--fg); transition:transform var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease); }
+.chip:hover{ border-color:var(--fg-2); transform:translateY(-1px); }
+.chip:active{ transform:scale(.96); }
+.chip.on{ background:var(--ink); color:var(--ink-fg); border-color:var(--ink); font-weight:700; }
+.chip.sm{ padding:2px 8px; font-size:10.5px; }
+
+.page{ display:none; animation:pageIn var(--t-mid) var(--ease) both; }
+.page.on{ display:block; }
+@keyframes pageIn{ from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:none;} }
+
+.sec{ display:flex; align-items:baseline; gap:8px; margin:16px 2px 6px; }
+.sec h2{ margin:0; font-size:10.5px; font-weight:700; letter-spacing:1.6px; text-transform:uppercase; color:var(--fg-3); }
+.sec .sp{ flex:1; }
+.sec .hint{ font-size:11px; color:var(--fg-3); }
+
+.card{ background:var(--bg-2); border:1px solid var(--line); border-radius:var(--radius); position:relative; transition:transform var(--t-mid) var(--ease), box-shadow var(--t-mid) var(--ease), border-color var(--t-fast) var(--ease); }
+.card.in{ animation:cardIn var(--t-mid) var(--ease) both; }
+@keyframes cardIn{ from{ opacity:0; transform:translateY(8px);} to{ opacity:1; transform:none;} }
+.card .inner{ padding:var(--row-pad) 12px; }
+.grip{ display:none; position:absolute; top:8px; right:8px; width:22px; height:22px; border-radius:6px; color:var(--fg-3); background:var(--bg-3); border:1px solid var(--line-2); font-size:12px; line-height:20px; text-align:center; cursor:grab; touch-action:none; }
+.grip::before{ content:"⋮⋮"; letter-spacing:-2px; }
+
+/* ---- master ---------------------------------------------------------------- */
+.master .top{ display:flex; align-items:center; gap:8px; }
+.master .top h2{ margin:0; font-size:10.5px; font-weight:700; letter-spacing:1.6px; text-transform:uppercase; color:var(--fg-3); }
+.master .pct{ margin-left:auto; color:var(--fg-2); font-size:13px; min-width:46px; text-align:right; }
+.master .row{ display:flex; align-items:center; gap:10px; margin-top:6px; }
+.sel{ width:100%; margin-top:8px; padding:7px 32px 7px 10px; background:var(--bg-3); border:1px solid var(--line-2); border-radius:8px; appearance:none; -webkit-appearance:none; background-image:linear-gradient(45deg,transparent 50%,var(--fg-2) 50%),linear-gradient(135deg,var(--fg-2) 50%,transparent 50%); background-position:calc(100% - 16px) 50%, calc(100% - 11px) 50%; background-size:5px 5px; background-repeat:no-repeat; transition:border-color var(--t-fast) var(--ease); }
+.sel:hover{ border-color:var(--fg-2); }
+.sel:active{ transform:scale(.995); }
+
+/* ---- icon buttons / mute ---------------------------------------------------- */
+.ib{ width:28px; height:28px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; flex:none; color:var(--fg-2); border:1px solid transparent; transition:background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
+.ib:hover{ background:var(--bg-3); border-color:var(--line-2); color:var(--fg); }
+.ib:active{ transform:scale(.9); }
+.ib.on{ background:var(--ink); color:var(--ink-fg); border-color:var(--ink); }
+.ib svg{ width:16px; height:16px; }
+
+/* ---- app rows ---------------------------------------------------------------- */
+.apps{ padding:0; overflow:hidden; }
+.row{ padding:var(--row-pad) 12px; border-bottom:1px solid var(--line); animation:cardIn var(--t-mid) var(--ease) both; transition:background var(--t-fast) var(--ease), opacity var(--t-mid) var(--ease), transform var(--t-mid) var(--ease), max-height var(--t-mid) var(--ease); }
+.row:last-child{ border-bottom:0; }
+.row.out{ opacity:0; transform:translateX(16px); max-height:0; padding-top:0; padding-bottom:0; overflow:hidden; }
+.row .name{ display:flex; align-items:center; gap:8px; min-height:20px; }
+.row .name b{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.row .name .pct{ margin-left:auto; color:var(--fg-2); min-width:46px; text-align:right; transition:color var(--t-fast) var(--ease); }
+.row .name .pct.boost{ font-weight:700; color:var(--fg); }
+.row .name .pct.muted{ color:var(--fg-3); text-decoration:line-through; }
+.badge{ font-size:9.5px; font-weight:700; letter-spacing:.8px; padding:1px 6px; border-radius:999px; border:1px solid var(--line-2); color:var(--fg-2); background:var(--bg-3); transition:opacity var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+.badge.on{ background:var(--ink); color:var(--ink-fg); border-color:var(--ink); }
+.row .ctl{ display:flex; align-items:center; gap:10px; margin-top:6px; }
+.row.ducked .ctl{ opacity:.78; }
+.ico{ width:34px; height:34px; border-radius:9px; flex:none; display:grid; place-items:center; background:var(--bg-3); border:1px solid var(--line); overflow:hidden; position:relative; }
+.ico img{ width:100%; height:100%; object-fit:cover; display:block; opacity:0; transition:opacity var(--t-mid) var(--ease); }
+.ico img.ok{ opacity:1; }
+.ico .mono{ position:absolute; inset:0; display:grid; place-items:center; font-weight:700; font-size:13px; color:var(--fg-2); letter-spacing:.5px; }
+.ico img.ok + .mono{ opacity:0; }
+.row.muted .ico{ opacity:.45; filter:grayscale(1); }
+
+/* ---- slider -------------------------------------------------------------------- */
+.sl{ position:relative; flex:1; height:30px; cursor:pointer; touch-action:none; user-select:none; -webkit-user-select:none; outline-offset:4px; border-radius:6px; }
+.sl .tr{ position:absolute; left:8px; right:8px; top:12px; height:4px; border-radius:2px; background:var(--track); overflow:visible; }
+.sl .bz{ position:absolute; top:0; bottom:0; right:0; border-radius:0 2px 2px 0; background:repeating-linear-gradient(90deg, var(--boost) 0 3px, transparent 3px 6px); opacity:.45; }
+.sl .fi{ position:absolute; left:0; top:0; bottom:0; border-radius:2px; background:var(--fill); transition:none; }
+.sl.animate .fi{ transition:width var(--t-fast) var(--ease); }
+.sl.boost .fi{ background:var(--boost); }
+.sl .nt{ position:absolute; top:-5px; width:1px; height:14px; background:var(--fg-3); }
+.sl .kn{ position:absolute; top:7px; width:14px; height:14px; margin-left:-7px; border-radius:50%; background:var(--fg); border:1px solid var(--line-2); box-shadow:0 1px 3px rgba(0,0,0,.4); transition:transform var(--t-fast) var(--spring), background var(--t-fast) var(--ease); }
+.sl.animate .kn{ transition:left var(--t-fast) var(--ease), transform var(--t-fast) var(--spring); }
+.sl:hover .kn{ transform:scale(1.15); }
+.sl.drag .kn{ transform:scale(1.3); }
+.sl.muted .fi{ opacity:.3; }
+.sl.muted .kn{ background:var(--fg-3); }
+.sl .vu{ position:absolute; left:8px; right:8px; top:20px; height:2px; border-radius:1px; overflow:hidden; opacity:.9; }
+.sl .vu i{ display:block; height:100%; width:0; background:var(--vu); border-radius:1px; transition:width .09s linear; }
+html[data-vu="off"] .sl .vu{ display:none; }
+.sl .tip{ position:absolute; top:-26px; transform:translateX(-50%) translateY(4px); font-size:10.5px; padding:2px 6px; border-radius:6px; background:var(--ink); color:var(--ink-fg); opacity:0; pointer-events:none; transition:opacity var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); white-space:nowrap; }
+.sl.drag .tip{ opacity:1; transform:translateX(-50%) translateY(0); }
+.sl.shake{ animation:shake .3s var(--ease); }
+@keyframes shake{ 0%,100%{ transform:translateX(0);} 25%{ transform:translateX(-4px);} 75%{ transform:translateX(4px);} }
+
+.empty{ text-align:center; color:var(--fg-3); padding:30px 12px; font-size:12.5px; }
+.empty b{ display:block; color:var(--fg-2); margin-bottom:4px; }
+
+/* ---- search ------------------------------------------------------------------ */
+.search{ display:flex; align-items:center; gap:8px; margin:0 0 8px; }
+.search input{ flex:1; padding:7px 10px; border:1px solid var(--line-2); border-radius:8px; background:var(--bg-2); transition:border-color var(--t-fast) var(--ease); }
+.search input:focus{ border-color:var(--fg-2); outline:none; }
+
+/* ---- generic controls ---------------------------------------------------------- */
+.btn{ display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:8px 14px; border:1px solid var(--line-2); border-radius:9px; background:var(--bg-3); color:var(--fg); font-size:12.5px; transition:transform var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease); }
+.btn:hover{ border-color:var(--fg-2); transform:translateY(-1px); }
+.btn:active{ transform:scale(.96); }
+.btn.pri{ background:var(--ink); color:var(--ink-fg); border-color:var(--ink); font-weight:700; }
+.btn.ghost{ background:transparent; }
+.btn.danger{ border-style:dashed; }
+.btn:disabled{ opacity:.45; cursor:not-allowed; transform:none; }
+.btn.sm{ padding:5px 10px; font-size:11.5px; }
+.btns{ display:flex; flex-wrap:wrap; gap:8px; }
+.opt{ display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:10px 12px; border-bottom:1px solid var(--line); }
+.opt .l{ min-width:150px; }
+.opt:last-child{ border-bottom:0; }
+.opt .l{ flex:1; }
+.opt .l small{ display:block; color:var(--fg-3); font-size:11px; }
+.opt select,.opt input[type="text"],.opt input[type="number"],.opt input[type="url"]{ padding:6px 9px; border:1px solid var(--line-2); border-radius:8px; background:var(--bg-3); max-width:200px; }
+.opt input[type="range"]{ width:140px; accent-color:var(--ink); }
+.seg{ display:inline-flex; border:1px solid var(--line-2); border-radius:9px; overflow:hidden; }
+.seg button{ padding:6px 10px; font-size:11.5px; color:var(--fg-2); transition:background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+.seg button.on{ background:var(--ink); color:var(--ink-fg); font-weight:700; }
+.seg button:active{ transform:scale(.96); }
+.tg{ position:relative; width:40px; height:22px; border-radius:11px; background:var(--bg-4); border:1px solid var(--line-2); flex:none; transition:background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
+.tg i{ position:absolute; top:2px; left:2px; width:16px; height:16px; border-radius:50%; background:var(--fg-2); transition:transform var(--t-fast) var(--spring), background var(--t-fast) var(--ease); }
+.tg.on{ background:var(--ink); border-color:var(--ink); }
+.tg.on i{ transform:translateX(18px); background:var(--ink-fg); }
+.tg:active i{ transform:scale(.9); }
+.tg.on:active i{ transform:translateX(18px) scale(.9); }
+.grp{ margin-top:12px; }
+.grp > summary{ cursor:pointer; list-style:none; display:flex; align-items:center; gap:8px; padding:10px 12px; font-size:10.5px; font-weight:700; letter-spacing:1.6px; text-transform:uppercase; color:var(--fg-3); }
+.grp > summary::-webkit-details-marker{ display:none; }
+.grp > summary::after{ content:"+"; margin-left:auto; color:var(--fg-3); transition:transform var(--t-fast) var(--ease); }
+.grp[open] > summary::after{ transform:rotate(45deg); }
+.grp[open] > summary{ border-bottom:1px solid var(--line); }
+.grp .inner{ padding:0; }
+.kv{ display:grid; grid-template-columns:1fr auto; gap:4px 12px; font-size:12px; padding:8px 12px; }
+.kv span:nth-child(odd){ color:var(--fg-2); }
+.lamps{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; padding:10px 12px; }
+.lampc{ display:flex; align-items:center; gap:8px; font-size:11.5px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--bg-3); }
+.lampc i{ width:8px; height:8px; border-radius:50%; background:var(--fg-3); flex:none; transition:background var(--t-mid) var(--ease); }
+.lampc.ok i{ background:var(--ink); }
+.lampc.bad i{ background:transparent; border:1px solid var(--fg-2); }
+.lampc small{ display:block; color:var(--fg-3); font-size:10px; }
+.note{ font-size:11.5px; color:var(--fg-2); padding:10px 12px; border-top:1px solid var(--line); line-height:1.5; }
+.note b{ color:var(--fg); }
+textarea.ta{ width:100%; min-height:110px; padding:8px 10px; border:1px solid var(--line-2); border-radius:8px; background:var(--bg-3); resize:vertical; }
+.list{ padding:0; }
+.li{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-bottom:1px solid var(--line); transition:background var(--t-fast) var(--ease); }
+.li:last-child{ border-bottom:0; }
+.li:hover,.li.sel{ background:var(--bg-3); }
+.list .li{ animation:cardIn var(--t-mid) var(--ease) both; }
+.li .l{ flex:1; min-width:0; }
+.li .l b{ display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.li .l small{ color:var(--fg-3); font-size:11px; }
+.li.on .l b::before{ content:"● "; }
+.tagin{ display:flex; flex-wrap:wrap; gap:6px; padding:8px 12px; }
+.tag{ display:inline-flex; align-items:center; gap:5px; font-size:11px; padding:3px 8px; border:1px solid var(--line-2); border-radius:999px; background:var(--bg-3); animation:cardIn var(--t-fast) var(--ease); }
+.tag button{ color:var(--fg-3); font-size:12px; line-height:1; }
+.tag button:hover{ color:var(--fg); }
+.tagin input{ flex:1; min-width:120px; padding:4px 8px; border:1px dashed var(--line-2); border-radius:999px; background:transparent; font-size:11px; }
+.tagin input:focus{ outline:none; border-style:solid; border-color:var(--fg-2); }
+.meter{ height:6px; border-radius:3px; background:var(--track); overflow:hidden; }
+.meter i{ display:block; height:100%; width:0; background:var(--fill); transition:width var(--t-mid) var(--ease); }
+.kbd{ display:inline-block; font-size:10.5px; padding:1px 6px; border:1px solid var(--line-2); border-bottom-width:2px; border-radius:5px; background:var(--bg-3); color:var(--fg-2); }
+.skel{ height:58px; border-bottom:1px solid var(--line); position:relative; overflow:hidden; }
+.skel::after{ content:""; position:absolute; inset:0; background:linear-gradient(90deg, transparent, var(--bg-3), transparent); transform:translateX(-100%); animation:shim 1.2s linear infinite; }
+@keyframes shim{ to{ transform:translateX(100%);} }
+
+/* ---- touch bar --------------------------------------------------------------------- */
+.bar{ position:fixed; left:50%; bottom:calc(12px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); width:min(420px, 100vw - 24px); height:58px; border-radius:18px; background:color-mix(in srgb, var(--bg-2) 82%, transparent); background:var(--bg-2); border:1px solid var(--line); box-shadow:var(--shadow); z-index:40; display:flex; padding:4px; -webkit-backdrop-filter:blur(18px) saturate(1.4); backdrop-filter:blur(18px) saturate(1.4); }
+@supports (backdrop-filter:blur(18px)) or (-webkit-backdrop-filter:blur(18px)){ .bar{ background:color-mix(in srgb, var(--bg-2) 82%, transparent); } }
+.bar .pill{ position:absolute; top:4px; left:4px; height:50px; width:0; border-radius:14px; background:var(--bg-4); transition:left .32s var(--ease), width .32s var(--ease); }
+.bar .tab{ flex:1; position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; min-height:50px; border-radius:14px; color:var(--fg-2); font-size:10.5px; letter-spacing:.3px; transition:color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+.bar .tab svg{ width:18px; height:18px; transition:transform .32s var(--spring); }
+.bar .tab:active{ transform:scale(.93); }
+.bar .tab[aria-selected="true"]{ color:var(--fg); font-weight:700; }
+.bar .tab[aria-selected="true"] svg{ transform:translateY(-1px) scale(1.16); }
+body.customize .bar{ border-color:var(--fg-2); }
+body.customize .bar .tab:not([data-page="mixer"]){ pointer-events:none; opacity:.3; }
+
+/* ---- sheets / toast ----------------------------------------------------------------- */
+.ov{ position:fixed; inset:0; background:rgba(0,0,0,.5); opacity:0; pointer-events:none; transition:opacity var(--t-mid) var(--ease); z-index:50; }
+.ov.on{ opacity:1; pointer-events:auto; }
+.sheet{ position:fixed; left:50%; bottom:0; transform:translate(-50%, 110%); width:min(520px, 100vw); max-height:86vh; overflow:auto; background:var(--bg-2); border:1px solid var(--line); border-bottom:0; border-radius:18px 18px 0 0; padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px)); z-index:51; transition:transform var(--t-mid) var(--ease); box-shadow:var(--shadow); }
+.sheet.on{ transform:translate(-50%, 0); }
+.sheet h3{ margin:0 0 8px; font-size:14px; }
+.sheet p{ margin:0 0 12px; color:var(--fg-2); font-size:12.5px; }
+.sheet input[type="text"]{ width:100%; padding:9px 11px; border:1px solid var(--line-2); border-radius:9px; background:var(--bg-3); margin-bottom:12px; }
+.sheet input.bad{ animation:shake .3s var(--ease); border-color:var(--fg); }
+.toasts{ position:fixed; left:50%; bottom:calc(var(--bar-h) + 18px + env(safe-area-inset-bottom,0px)); transform:translateX(-50%); z-index:60; display:flex; flex-direction:column; gap:6px; align-items:center; pointer-events:none; }
+.toast{ pointer-events:auto; display:flex; align-items:center; gap:10px; background:var(--ink); color:var(--ink-fg); padding:8px 12px; border-radius:999px; font-size:12px; box-shadow:var(--shadow); animation:toastIn var(--t-mid) var(--spring) both; max-width:min(440px, 92vw); }
+.toast.out{ animation:toastOut var(--t-mid) var(--ease) both; }
+.toast button{ font-weight:700; text-decoration:underline; color:inherit; }
+@keyframes toastIn{ from{ opacity:0; transform:translateY(10px) scale(.95);} to{ opacity:1; transform:none;} }
+@keyframes toastOut{ to{ opacity:0; transform:translateY(8px) scale(.96);} }
+
+/* ---- customize mode ------------------------------------------------------------------ */
+body.customize .zone{ outline:1px dashed var(--line-2); outline-offset:6px; border-radius:var(--radius); }
+body.customize .card.drag-able{ animation:wobble .5s ease-in-out infinite alternate; cursor:grab; }
+body.customize .card.drag-able .grip{ display:block; }
+@keyframes wobble{ from{ transform:rotate(-.35deg);} to{ transform:rotate(.35deg);} }
+.card.lifted{ position:fixed; z-index:45; transform:rotate(1.2deg) scale(1.04); box-shadow:var(--shadow); animation:none; pointer-events:none; border-color:var(--fg-2); }
+.card.ph{ opacity:0; }
+.zone.over{ outline-color:var(--fg); }
+.custbar{ display:none; position:fixed; left:50%; top:12px; transform:translateX(-50%); z-index:46; gap:8px; align-items:center; padding:6px 8px 6px 12px; background:var(--ink); color:var(--ink-fg); border-radius:999px; font-size:12px; box-shadow:var(--shadow); animation:toastIn var(--t-mid) var(--spring) both; }
+body.customize .custbar{ display:flex; }
+.custbar .btn{ padding:4px 10px; font-size:11.5px; background:transparent; border-color:currentColor; color:inherit; }
+
+.off{ display:none; }
+.offline-banner{ display:none; font-size:11.5px; padding:8px 12px; border:1px dashed var(--line-2); border-radius:9px; color:var(--fg-2); margin-bottom:10px; }
+body.engine-off .offline-banner{ display:block; }
+.counter{ display:inline-block; }
+
+@media (max-width:380px){ .shell{ padding:10px 12px 0; } .hdr .ver{ display:none; } .opt input[type="range"]{ width:100px; } }
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{ animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
+}
+@media print{ .bar,.toasts,.custbar{ display:none !important; } body{ padding:0; } }
+</style>
+</head>
+<body>
+<noscript><div class="shell"><div class="card"><div class="inner">SoundDial needs JavaScript to run. Enable it and reload.</div></div></div></noscript>
+
+<div class="shell" id="shell">
+  <header class="hdr">
+    <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="var(--ink)"/><path d="M6 15.5A5.5 5.5 0 1 1 15.5 15.5" fill="none" stroke="var(--ink-fg)" stroke-width="2" stroke-linecap="round"/><path d="M10 10l2.6-2.6" stroke="var(--ink-fg)" stroke-width="2" stroke-linecap="round"/><rect x="16" y="14" width="1.6" height="4" rx=".8" fill="var(--ink-fg)"/><rect x="18.4" y="11" width="1.6" height="7" rx=".8" fill="var(--ink-fg)"/></svg>
+    <h1>SoundDial</h1><span class="ver" id="ver">v1.0</span>
+    <span class="sp"></span>
+    <span class="lamp off" id="lamp" title="Engine connection"><i></i><span id="lampTxt">connecting</span></span>
+    <button class="chip" id="profChip" title="Profiles (P)">Profiles</button>
+    <button class="chip" id="menuBtn" aria-haspopup="true" title="More (⋯)">⋯</button>
+  </header>
+
+  <div class="offline-banner" id="offBanner">Engine not reachable — showing <b>simulated apps</b>. Start <span class="kbd">python engine.py</span> on this computer to control real audio. Your settings and profiles are still saved locally.</div>
+
+  <!-- ================= MIXER ================= -->
+  <section class="page on" id="page-mixer" role="tabpanel" aria-labelledby="tab-mixer">
+    <div class="zone" id="zoneMixer">
+      <div class="card master drag-able in" data-card="master" id="cardMaster">
+        <div class="grip" tabindex="0" aria-label="Drag to move"></div>
+        <div class="inner">
+          <div class="top"><h2>Output</h2><span class="badge off" id="duckBadge">DUCKING</span><span class="pct" id="masterPct">100%</span></div>
+          <div class="row">
+            <button class="ib" id="masterMute" aria-pressed="false" title="Mute output (M)"></button>
+            <div class="sl" id="masterSl" role="slider" tabindex="0" aria-label="Output volume" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100"></div>
+          </div>
+          <select class="sel" id="outputSel" aria-label="Output device"></select>
+        </div>
+      </div>
+
+      <div class="card drag-able in" data-card="apps" id="cardApps">
+        <div class="grip" tabindex="0" aria-label="Drag to move"></div>
+        <div class="sec" style="margin:12px 12px 6px"><h2>Applications</h2><span class="sp"></span><span class="hint" id="appCount"></span></div>
+        <div class="search" style="padding:0 12px"><input id="search" type="text" placeholder="Filter apps…  ( / )" aria-label="Filter apps" autocomplete="off"><button class="chip sm" id="clearSearch" style="display:none">clear</button></div>
+        <div class="apps" id="apps"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>
+      </div>
+
+      <div class="card drag-able in" data-card="quick" id="cardQuick">
+        <div class="grip" tabindex="0" aria-label="Drag to move"></div>
+        <div class="inner">
+          <div class="sec" style="margin:0 0 8px"><h2>Quick actions</h2></div>
+          <div class="btns">
+            <button class="btn sm" id="qReset" title="Set every app to 100%">All to 100%</button>
+            <button class="btn sm" id="qUnmute">Unmute all</button>
+            <button class="btn sm" id="qDuck" aria-pressed="false">Duck now</button>
+            <button class="btn sm" id="qUndo" disabled title="Undo last change (Z)">Undo</button>
+            <button class="btn sm" id="qCustom">Customize layout</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PROFILES ================= -->
+  <section class="page" id="page-profiles" role="tabpanel" aria-labelledby="tab-profiles">
+    <div class="sec"><h2>Profiles</h2><span class="sp"></span><span class="hint">one tap switches every app</span></div>
+    <div class="card in"><div class="list" id="profList"></div></div>
+    <div class="btns" style="margin-top:10px">
+      <button class="btn pri" id="profSave">Save current as…</button>
+      <button class="btn" id="profExport">Export profiles</button>
+      <button class="btn" id="profImport">Import profiles</button>
+    </div>
+    <div class="sec"><h2>Selected profile</h2></div>
+    <div class="card in"><div class="list" id="profDetail"></div>
+      <div class="btns" style="padding:10px 12px">
+        <button class="btn sm" id="profApply">Apply</button>
+        <button class="btn sm" id="profUpdate">Update with current levels</button>
+        <button class="btn sm" id="profRename">Rename</button>
+        <button class="btn sm danger" id="profDelete">Delete</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= DUCKING ================= -->
+  <section class="page" id="page-ducking" role="tabpanel" aria-labelledby="tab-ducking">
+    <div class="sec"><h2>Auto-ducking</h2><span class="sp"></span><span class="hint" id="duckState">idle</span></div>
+    <div class="card in">
+      <div class="opt"><div class="l">Lower media when a call starts<small>restores every level ~4 s after the call goes quiet</small></div><button class="tg" id="duckOn" role="switch" aria-checked="true"><i></i></button></div>
+      <div class="opt"><div class="l">Duck media to<small><span id="duckLvlTxt">25</span>% of its own volume</small></div><input type="range" id="duckLvl" min="0" max="100" step="5" value="25" aria-label="Duck level"></div>
+      <div class="opt"><div class="l">Duck every other app<small>instead of only the media list</small></div><button class="tg" id="duckAll" role="switch" aria-checked="false"><i></i></button></div>
+      <div class="opt"><div class="l">Duck now (manual)<small>hold the ducked state until you switch it off</small></div><button class="tg" id="duckForce" role="switch" aria-checked="false"><i></i></button></div>
+    </div>
+    <div class="sec"><h2>Call apps</h2><span class="sp"></span><span class="hint">matched on process / bundle name</span></div>
+    <div class="card in"><div class="tagin" id="callTags"></div></div>
+    <div class="sec"><h2>Media apps</h2></div>
+    <div class="card in"><div class="tagin" id="mediaTags"></div></div>
+    <div class="btns" style="margin-top:10px"><button class="btn sm ghost" id="duckDefaults">Restore default lists</button></div>
+  </section>
+
+  <!-- ================= OPTIONS ================= -->
+  <section class="page" id="page-options" role="tabpanel" aria-labelledby="tab-options">
+    <div class="sec"><h2>Appearance</h2></div>
+    <div class="card in">
+      <div class="opt"><div class="l">Theme<small>all greyscale — hierarchy by weight, not hue</small></div>
+        <div class="seg" id="themeSeg"><button data-v="mono">Mono</button><button data-v="light">Light</button><button data-v="graphite">Graphite</button><button data-v="paper">Paper</button><button data-v="contrast">Contrast</button></div></div>
+      <div class="opt"><div class="l">Density</div><div class="seg" id="densSeg"><button data-v="compact">Compact</button><button data-v="normal">Normal</button><button data-v="relaxed">Relaxed</button></div></div>
+      <div class="opt"><div class="l">Level meters under sliders</div><button class="tg on" id="optVu" role="switch" aria-checked="true"><i></i></button></div>
+      <div class="opt"><div class="l">Show percentages</div><button class="tg on" id="optPct" role="switch" aria-checked="true"><i></i></button></div>
+      <div class="opt"><div class="l">Animations</div><button class="tg on" id="optAnim" role="switch" aria-checked="true"><i></i></button></div>
+      <div class="opt"><div class="l">Follow system light/dark<small>switches Mono ⇄ Light with the OS</small></div><button class="tg" id="optAuto" role="switch" aria-checked="false"><i></i></button></div>
+    </div>
+    <details class="grp card in"><summary>Behaviour</summary><div class="inner">
+      <div class="opt"><div class="l">Slider snap to 100%<small>drag snaps within ±<span id="snapTxt">3</span>%</small></div><input type="range" id="optSnap" min="0" max="10" step="1" value="3"></div>
+      <div class="opt"><div class="l">Scroll-wheel step</div><input type="number" id="optWheel" min="1" max="25" value="5" style="width:70px"> %</div>
+      <div class="opt"><div class="l">Double-click resets to</div><input type="number" id="optDbl" min="0" max="200" value="100" style="width:70px"> %</div>
+      <div class="opt"><div class="l">Hide silent apps<small>remove rows that have no stream for</small></div><input type="number" id="optHide" min="0" max="120" value="0" style="width:70px"> s</div>
+      <div class="opt"><div class="l">Sort apps</div><div class="seg" id="sortSeg"><button data-v="name">Name</button><button data-v="loud">Loudest</button><button data-v="recent">Recent</button></div></div>
+      <div class="opt"><div class="l">Toasts</div><button class="tg on" id="optToast" role="switch" aria-checked="true"><i></i></button></div>
+    </div></details>
+    <details class="grp card in"><summary>Engine</summary><div class="inner">
+      <div class="opt"><div class="l">Engine address<small>the local service that touches real audio</small></div><input type="url" id="optEngine" value="http://127.0.0.1:47800" spellcheck="false"></div>
+      <div class="opt"><div class="l">Poll fallback interval<small>used only when live events are unavailable</small></div><input type="number" id="optPoll" min="200" max="5000" step="100" value="800" style="width:80px"> ms</div>
+      <div class="opt"><div class="l">Reconnect now</div><button class="btn sm" id="optReconnect">Reconnect</button></div>
+      <div class="opt"><div class="l">Force demo mode<small>simulated apps even when the engine is running</small></div><button class="tg" id="optDemo" role="switch" aria-checked="false"><i></i></button></div>
+      <div class="kv" id="engineInfo"></div>
+    </div></details>
+    <details class="grp card in"><summary>Keyboard</summary><div class="inner">
+      <div class="kv">
+        <span>Pages</span><span><span class="kbd">1</span>–<span class="kbd">5</span></span>
+        <span>Filter apps</span><span><span class="kbd">/</span></span>
+        <span>Mute output</span><span><span class="kbd">M</span></span>
+        <span>Undo last change</span><span><span class="kbd">Z</span></span>
+        <span>Profiles menu</span><span><span class="kbd">P</span></span>
+        <span>Customize layout</span><span><span class="kbd">C</span></span>
+        <span>Slider: nudge / fine</span><span><span class="kbd">←</span><span class="kbd">→</span> / <span class="kbd">Shift</span></span>
+        <span>Slider: 0 · 100 · max</span><span><span class="kbd">Home</span> <span class="kbd">0</span> <span class="kbd">End</span></span>
+        <span>Close sheet</span><span><span class="kbd">Esc</span></span>
+      </div>
+    </div></details>
+    <div class="btns" style="margin-top:12px"><button class="btn sm ghost" id="optReset">Reset options to defaults</button></div>
+  </section>
+
+  <!-- ================= DATA ================= -->
+  <section class="page" id="page-data" role="tabpanel" aria-labelledby="tab-data">
+    <div class="sec"><h2>Where your data lives</h2><span class="sp"></span><span class="hint" id="storeSummary"></span></div>
+    <div class="card in">
+      <div class="lamps" id="lamps"></div>
+      <div class="opt"><div class="l">Preferred place<small>bypassed, visibly, when it is unhealthy</small></div><select class="sel" style="margin:0;width:auto;max-width:200px" id="prefTier"></select></div>
+      <div class="note">Everything stays on this device; nothing is sent anywhere. Clearing browser data deletes the settings stored in the browser — keep a backup. The engine keeps its own copy of profiles and ducking rules in its config folder, so those survive a browser reset once it has connected.</div>
+    </div>
+    <div class="sec"><h2>Backup &amp; restore</h2></div>
+    <div class="card in">
+      <div class="btns" style="padding:12px">
+        <button class="btn pri" id="dataExport">Backup everything</button>
+        <button class="btn" id="dataExportSel">Export profiles only</button>
+        <button class="btn" id="dataImport">Import…</button>
+        <button class="btn" id="dataCopy">Copy as text</button>
+      </div>
+      <div id="importPreview" class="off"><div class="note" id="importPreviewTxt"></div><div class="btns" style="padding:0 12px 12px"><button class="btn pri sm" id="importConfirm">Import</button><button class="btn sm" id="importCancel">Cancel</button></div></div>
+      <div class="note">Imports are previewed first, de-duplicated and never silently overwrite. A damaged file imports what it can and lists what it couldn't. A backup is taken automatically before any import or reset.</div>
+      <div class="kv" id="backupLog"></div>
+    </div>
+    <div class="sec"><h2>Danger</h2></div>
+    <div class="card in">
+      <div class="opt"><div class="l">Delete all local data<small>profiles, options, layout, remembered levels — a backup downloads first</small></div><button class="btn sm danger" id="dataWipe">Delete…</button></div>
+    </div>
+    <div class="note" style="border:0;padding:12px 2px">SoundDial changes the volume of running applications and nothing else. Levels shown are what the engine reports; peaks are instantaneous and approximate.</div>
+  </section>
+</div>
+
+<div class="custbar" id="custbar"><span>Customize — hold a card to move it</span><button class="btn" id="custReset">Reset</button><button class="btn" id="custDone">Done</button></div>
+
+<nav class="bar" role="tablist" aria-label="Sections" id="bar">
+  <div class="pill" id="pill"></div>
+  <button class="tab" role="tab" id="tab-mixer" data-page="mixer" aria-selected="true" aria-controls="page-mixer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2" fill="var(--bg-2)"/><circle cx="15" cy="12" r="2" fill="var(--bg-2)"/><circle cx="7" cy="17" r="2" fill="var(--bg-2)"/></svg>Mixer</button>
+  <button class="tab" role="tab" id="tab-profiles" data-page="profiles" aria-selected="false" aria-controls="page-profiles"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l2.7 5.5 6 .9-4.4 4.2 1 6-5.3-2.8-5.3 2.8 1-6L3.3 9.4l6-.9z"/></svg>Profiles</button>
+  <button class="tab" role="tab" id="tab-ducking" data-page="ducking" aria-selected="false" aria-controls="page-ducking"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 18h5l4-9 2 5 2-3h3"/></svg>Ducking</button>
+  <button class="tab" role="tab" id="tab-options" data-page="options" aria-selected="false" aria-controls="page-options"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Options</button>
+  <button class="tab" role="tab" id="tab-data" data-page="data" aria-selected="false" aria-controls="page-data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>Data</button>
+</nav>
+
+<div class="ov" id="ov"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <h3 id="sheetTitle"></h3>
+  <p id="sheetText"></p>
+  <input type="text" id="sheetInput" class="off" autocomplete="off" spellcheck="false">
+  <div class="btns" id="sheetBtns"></div>
+</div>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<input type="file" id="fileIn" accept=".json,application/json" class="off">
+<script>
+/* ============================================================================
+   SoundDial app script
+   Sections: util · storage (10 tiers) · engine client · demo model · state ·
+   slider · mixer render · profiles · ducking · options · data · customize ·
+   touch bar · sheets/toasts · keyboard · boot
+   ============================================================================ */
+'use strict';
+(function(){
+
+/* ------------------------------------------------------------------ util */
+var $ = function(id){ return document.getElementById(id); };
+var qs = function(sel, root){ return (root||document).querySelector(sel); };
+var qsa = function(sel, root){ return Array.prototype.slice.call((root||document).querySelectorAll(sel)); };
+var clamp = function(v, a, b){ v = +v; if (isNaN(v)) v = a; return v < a ? a : v > b ? b : v; };
+var pct = function(v){ return Math.round(v * 100) + '%'; };
+var now = function(){ return Date.now(); };
+var uid = function(){ try { if (crypto && crypto.randomUUID) return crypto.randomUUID(); } catch(e){} return 'id-' + now().toString(36) + '-' + Math.random().toString(36).slice(2, 10); };
+var clone = function(x){ try { if (typeof structuredClone === 'function') return structuredClone(x); } catch(e){} return JSON.parse(JSON.stringify(x)); };
+var fmtInt = function(n){ n = Math.round(+n || 0); try { return n.toLocaleString(); } catch(e){ var s = String(Math.abs(n)), out = ''; while (s.length > 3){ out = ',' + s.slice(-3) + out; s = s.slice(0, -3); } return (n < 0 ? '-' : '') + s + out; } };
+var fmtTime = function(ts){ try { return new Date(ts).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}); } catch(e){ var d = new Date(ts); return d.getHours() + ':' + ('0' + d.getMinutes()).slice(-2); } };
+var debounce = function(fn, ms){ var t; return function(){ var a = arguments, c = this; clearTimeout(t); t = setTimeout(function(){ fn.apply(c, a); }, ms); }; };
+var esc = function(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
+var plural = function(n, one, many){ return n + ' ' + (n === 1 ? one : (many || one + 's')); };
+var monogram = function(name){ var w = String(name || '?').trim().split(/[\s._-]+/).filter(Boolean); var s = (w[0] ? w[0][0] : '?') + (w[1] ? w[1][0] : ''); return s.toUpperCase().slice(0, 2); };
+var reduceMotion = function(){ try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch(e){ return false; } };
+var countUp = function(el, from, to, fmt, ms){ // numbers count, never snap
+  if (!el) return; fmt = fmt || function(v){ return Math.round(v); }; ms = ms || 220;
+  if (reduceMotion() || !UI.anim || Math.abs(to - from) < 0.5){ el.textContent = fmt(to); return; }
+  var t0 = performance.now(); if (el._raf) cancelAnimationFrame(el._raf);
+  (function step(t){ var k = Math.min(1, (t - t0) / ms); k = 1 - Math.pow(1 - k, 3); el.textContent = fmt(from + (to - from) * k); if (k < 1) el._raf = requestAnimationFrame(step); })(t0);
+};
+
+/* ------------------------------------------------------------------ defaults */
+var DEFAULT_OPTS = {
+  theme:'mono', density:'normal', vu:true, pct:true, anim:true, autoTheme:false,
+  snap:3, wheel:5, dbl:100, hideSilent:0, sort:'name', toasts:true,
+  engine:'http://127.0.0.1:47800', poll:800, forceDemo:false, prefTier:'local',
+  layout:['master','apps','quick'], page:'mixer'
+};
+var DEFAULT_CALL = ['zoom','zoom.us','teams','ms-teams','msteams','facetime','discord','slack','webex','skype','google meet','whatsapp','telegram','signal'];
+var DEFAULT_MEDIA = ['spotify','music','chrome','google chrome','safari','firefox','msedge','arc','brave','vlc','mpv','tidal','apple music','youtube music','iina'];
+var DEFAULT_PROFILES = {
+  'Work':  { spotify:0.35, music:0.35, chrome:0.8, zoom:1.0, teams:1.0, discord:0.5 },
+  'Focus': { spotify:0.6, music:0.6, chrome:0.4, discord:0.0, slack:0.0 },
+  'Chill': { spotify:1.0, music:1.0, chrome:1.0, discord:0.7 }
+};
+
+/* ============================================================================
+   STORAGE — ten independent places, health lamps, write-to-two, newest wins
+   The "document" is one JSON object: { v, ts, opts, profiles, ducking, remembered, layout }
+   ============================================================================ */
+var KEY = 'sounddial.doc.v1';
+var Storage = (function(){
+  var tiers = {};
+  var order = ['local','idb','session','cookie','opfs','cache','winname','hash','engine','memory'];
+  var mem = null;
+  var health = {};  // name -> {ok:bool, msg:string, ts:number}
+  var retryAt = {}; // name -> timestamp after which to retry
+  var listeners = [];
+
+  function def(name, label, read, write, explain){ tiers[name] = {name:name, label:label, read:read, write:write, explain:explain}; }
+
+  def('local', 'Browser storage', function(){ return Promise.resolve(localStorage.getItem(KEY)); },
+      function(s){ localStorage.setItem(KEY, s); return Promise.resolve(); },
+      'The browser blocked its main storage (private window, storage full, or disabled). Settings still save elsewhere.');
+  def('session', 'This tab', function(){ return Promise.resolve(sessionStorage.getItem(KEY)); },
+      function(s){ sessionStorage.setItem(KEY, s); return Promise.resolve(); },
+      'Tab storage unavailable. It only lasts while this tab is open anyway.');
+  def('idb', 'Database', function(){ return idb('get'); }, function(s){ return idb('put', s); },
+      'The browser database refused the write. This happens in private windows or when disk is full.');
+  def('cookie', 'Cookie', function(){
+      var m = document.cookie.match(/(?:^|; )sd_doc=([^;]*)/); return Promise.resolve(m ? decodeURIComponent(m[1]) : null); },
+      function(s){ if (s.length > 3800) throw new Error('too large for a cookie'); document.cookie = 'sd_doc=' + encodeURIComponent(s) + '; max-age=31536000; path=/; SameSite=Lax'; var m = document.cookie.match(/sd_doc=/); if (!m) throw new Error('cookie rejected'); return Promise.resolve(); },
+      'Cookies are blocked or the data outgrew the cookie limit (about 4 KB). Not a problem while another place is green.');
+  def('opfs', 'Private file', function(){ return opfs('read'); }, function(s){ return opfs('write', s); },
+      'This browser has no private file system. Only newer Chrome, Edge and Safari have it.');
+  def('cache', 'Cache store', function(){ return cacheStore('read'); }, function(s){ return cacheStore('write', s); },
+      'The cache store is unavailable here (needs https or localhost, and not a private window).');
+  def('winname', 'Window name', function(){ var n = window.name || ''; return Promise.resolve(n.indexOf('SDDOC:') === 0 ? n.slice(6) : null); },
+      function(s){ window.name = 'SDDOC:' + s; return Promise.resolve(); },
+      'Could not stash a copy in the window. Harmless.');
+  def('hash', 'URL', function(){ var h = location.hash || ''; return Promise.resolve(h.indexOf('#sd=') === 0 ? decodeURIComponent(h.slice(4)) : null); },
+      function(s){ if (s.length > 1800) return Promise.resolve(); history.replaceState(null, '', '#sd=' + encodeURIComponent(s)); return Promise.resolve(); },
+      'The address bar copy is skipped when the data is large. Harmless.');
+  def('engine', 'Engine config', function(){ return Engine.getUiDoc(); }, function(s){ return Engine.setUiDoc(s); },
+      'The engine is not running, so it cannot keep a copy. Start engine.py and this turns green.');
+  def('memory', 'This session', function(){ return Promise.resolve(mem); }, function(s){ mem = s; return Promise.resolve(); },
+      'Memory never fails, but it is lost on reload — export a backup if only this lamp is green.');
+
+  function idb(op, s){
+    return new Promise(function(res, rej){
+      try {
+        if (!window.indexedDB) return rej(new Error('no indexedDB'));
+        var r = indexedDB.open('sounddial', 1);
+        r.onupgradeneeded = function(){ r.result.createObjectStore('kv'); };
+        r.onerror = function(){ rej(r.error || new Error('idb open failed')); };
+        r.onsuccess = function(){
+          var db = r.result, tx = db.transaction('kv', op === 'get' ? 'readonly' : 'readwrite'), st = tx.objectStore('kv');
+          var q = op === 'get' ? st.get(KEY) : st.put(s, KEY);
+          q.onsuccess = function(){ res(op === 'get' ? (q.result == null ? null : q.result) : undefined); db.close(); };
+          q.onerror = function(){ rej(q.error || new Error('idb ' + op + ' failed')); db.close(); };
+        };
+      } catch(e){ rej(e); }
+    });
+  }
+  function opfs(op, s){
+    return new Promise(function(res, rej){
+      try {
+        if (!navigator.storage || !navigator.storage.getDirectory) return rej(new Error('no OPFS'));
+        navigator.storage.getDirectory().then(function(dir){
+          return dir.getFileHandle('sounddial.json', {create:true});
+        }).then(function(fh){
+          if (op === 'read') return fh.getFile().then(function(f){ return f.text(); }).then(function(t){ res(t || null); });
+          return fh.createWritable().then(function(w){ return w.write(s).then(function(){ return w.close(); }); }).then(function(){ res(); });
+        }).catch(rej);
+      } catch(e){ rej(e); }
+    });
+  }
+  function cacheStore(op, s){
+    return new Promise(function(res, rej){
+      try {
+        if (!window.caches) return rej(new Error('no cache API'));
+        caches.open('sounddial').then(function(c){
+          if (op === 'read') return c.match('/sounddial-doc').then(function(r){ return r ? r.text().then(function(t){ res(t); }) : res(null); });
+          return c.put('/sounddial-doc', new Response(s, {headers:{'Content-Type':'application/json'}})).then(function(){ res(); });
+        }).catch(rej);
+      } catch(e){ rej(e); }
+    });
+  }
+
+  function setHealth(name, ok, msg){ health[name] = {ok:ok, msg:msg || '', ts:now()}; if (!ok) retryAt[name] = now() + 30000; listeners.forEach(function(f){ try { f(); } catch(e){} }); }
+
+  // write-and-read-back = the only proof
+  function verify(name, s){
+    var t = tiers[name];
+    return Promise.resolve().then(function(){ return t.write(s); }).then(function(){ return t.read(); }).then(function(back){
+      if (back !== s && !(name === 'hash' && s.length > 1800)) throw new Error('read-back mismatch');
+      setHealth(name, true, 'verified');
+    }).catch(function(e){ setHealth(name, false, (e && e.message) || 'failed'); throw e; });
+  }
+
+  function save(doc){
+    doc.ts = now(); var s = JSON.stringify(doc);
+    var pref = UI.prefTier || 'local';
+    var seq = [pref].concat(order.filter(function(n){ return n !== pref; }));
+    var done = 0, attempts = [];
+    // write to two healthy places always; retry failed tiers after 30 s
+    var chain = Promise.resolve();
+    seq.forEach(function(name){
+      chain = chain.then(function(){
+        if (done >= 2 && name !== 'engine' && name !== 'memory') return;
+        if (retryAt[name] && now() < retryAt[name]) return;
+        return verify(name, s).then(function(){ done++; attempts.push(name); }).catch(function(){});
+      });
+    });
+    return chain.then(function(){ Storage.lastWrite = {ts:doc.ts, tiers:attempts.slice()}; return attempts; });
+  }
+
+  // newest copy wins, not highest priority
+  function load(){
+    var best = null;
+    return Promise.all(order.map(function(name){
+      return Promise.resolve().then(function(){ return tiers[name].read(); }).then(function(s){
+        if (!s) return;
+        var d = JSON.parse(s);
+        if (d && typeof d === 'object' && d.v === 1 && (!best || (d.ts || 0) > (best.ts || 0))) best = d;
+        setHealth(name, true, 'readable');
+      }).catch(function(e){ setHealth(name, false, (e && e.message) || 'unreadable'); });
+    })).then(function(){ return best; });
+  }
+
+  function probeAll(){ // health check every tier with a real write/read of the current doc
+    var s = JSON.stringify(Doc.get());
+    return Promise.all(order.map(function(n){ return verify(n, s).catch(function(){}); }));
+  }
+
+  return { tiers:tiers, order:order, health:health, save:save, load:load, probeAll:probeAll, onHealth:function(f){ listeners.push(f); }, lastWrite:null };
+})();
+
+/* ------------------------------------------------------------------ the document */
+var Doc = (function(){
+  var d = { v:1, ts:0, opts:clone(DEFAULT_OPTS), profiles:clone(DEFAULT_PROFILES), ducking:{enabled:true, level:0.25, duck_all:false, call_apps:DEFAULT_CALL.slice(), media_apps:DEFAULT_MEDIA.slice()}, remembered:{}, backups:[] };
+  var saveSoon = debounce(function(){ Storage.save(d).then(function(tiers){ Data.renderLamps(); if (!tiers.length) Toast.show('Could not save anywhere — export a backup', 'Export', function(){ Data.exportAll(); }); }); }, 350);
+  return {
+    get:function(){ return d; },
+    merge:function(loaded){ if (!loaded) return;
+      d.opts = Object.assign({}, DEFAULT_OPTS, loaded.opts || {});
+      if (!Array.isArray(d.opts.layout) || d.opts.layout.length !== 3) d.opts.layout = DEFAULT_OPTS.layout.slice();
+      d.profiles = (loaded.profiles && typeof loaded.profiles === 'object') ? loaded.profiles : clone(DEFAULT_PROFILES);
+      d.ducking = Object.assign({}, d.ducking, loaded.ducking || {});
+      if (!Array.isArray(d.ducking.call_apps)) d.ducking.call_apps = DEFAULT_CALL.slice();
+      if (!Array.isArray(d.ducking.media_apps)) d.ducking.media_apps = DEFAULT_MEDIA.slice();
+      d.remembered = loaded.remembered || {}; d.backups = Array.isArray(loaded.backups) ? loaded.backups.slice(-8) : []; d.ts = loaded.ts || 0; },
+    save:saveSoon,
+    reset:function(){ d.opts = clone(DEFAULT_OPTS); d.profiles = clone(DEFAULT_PROFILES); d.ducking = {enabled:true, level:0.25, duck_all:false, call_apps:DEFAULT_CALL.slice(), media_apps:DEFAULT_MEDIA.slice()}; d.remembered = {}; saveSoon(); }
+  };
+})();
+var UI = Doc.get().opts; // live alias
+
+/* ============================================================================
+   ENGINE CLIENT — SSE with polling fallback, reconnect with backoff
+   ============================================================================ */
+var Engine = (function(){
+  var es = null, pollT = null, backoff = 1000, connected = false, lastState = null, uiDoc = null, closing = false;
+  var onState = function(){};
+  function base(){
+    // Served by the engine itself? Then the engine is this page's origin, whatever the port.
+    if (/^https?:$/.test(location.protocol) && /^(127\.0\.0\.1|localhost)$/.test(location.hostname) && !UI.engineOverride) return location.origin;
+    return (UI.engine || 'http://127.0.0.1:47800').replace(/\/+$/, '');
+  }
+  function setConn(v, why){
+    if (connected === v && !why) return;
+    connected = v; document.body.classList.toggle('engine-off', !v);
+    var lamp = $('lamp'), txt = $('lampTxt');
+    lamp.className = 'lamp ' + (v ? 'on' : (Demo.active ? 'demo' : 'off'));
+    txt.textContent = v ? 'engine' : (Demo.active ? 'demo' : (why || 'offline'));
+    Options.renderEngineInfo();
+  }
+  function connect(){
+    if (UI.forceDemo){ disconnect(); Demo.start(); setConn(false, 'demo'); return; }
+    closing = false;
+    try { if (es) es.close(); } catch(e){}
+    es = null;
+    if (!window.EventSource){ poll(); return; }
+    try {
+      es = new EventSource(base() + '/events');
+      es.onmessage = function(ev){ try { handle(JSON.parse(ev.data)); } catch(e){} };
+      es.onopen = function(){ backoff = 1000; Demo.stop(); setConn(true); clearInterval(pollT); pollT = null; };
+      es.onerror = function(){ if (closing) return; try { es.close(); } catch(e){} es = null; onDown(); };
+    } catch(e){ onDown(); }
+    // belt and braces: a first fetch so the UI fills before the stream settles
+    fetch(base() + '/state', {cache:'no-store'}).then(function(r){ return r.json(); }).then(handle).catch(function(){});
+  }
+  function onDown(){
+    if (!Demo.active){ Demo.start(); }
+    setConn(false);
+    backoff = Math.min(backoff * 1.6, 15000);
+    setTimeout(function(){ if (!connected && !UI.forceDemo) connect(); }, backoff);
+  }
+  function poll(){
+    clearInterval(pollT);
+    pollT = setInterval(function(){
+      fetch(base() + '/state', {cache:'no-store'}).then(function(r){ return r.json(); }).then(function(s){ handle(s); if (!connected){ Demo.stop(); setConn(true); } }).catch(function(){ if (connected) onDown(); });
+    }, clamp(UI.poll, 200, 5000));
+  }
+  function disconnect(){ closing = true; try { if (es) es.close(); } catch(e){} es = null; clearInterval(pollT); pollT = null; }
+  function handle(s){ if (!s || !s.apps) return; lastState = s; if (UI.forceDemo) return; onState(s); }
+  function cmd(obj){
+    if (!connected || UI.forceDemo) return Promise.resolve(Demo.cmd(obj));
+    return fetch(base() + '/cmd', {method:'POST', body:JSON.stringify(obj), headers:{'Content-Type':'text/plain'}}).then(function(r){ return r.json(); }).catch(function(e){ onDown(); return {ok:false, error:String(e)}; });
+  }
+  function getUiDoc(){
+    if (!connected) return Promise.reject(new Error('engine offline'));
+    return fetch(base() + '/state', {cache:'no-store'}).then(function(r){ return r.json(); }).then(function(s){ return (s && s.uiDoc) || uiDoc || null; });
+  }
+  function setUiDoc(s){ if (!connected) return Promise.reject(new Error('engine offline')); uiDoc = s; return cmd({cmd:'set_setting', key:'ui_doc', value:s}).then(function(r){ if (!r || !r.ok) throw new Error('engine refused'); }); }
+  return { connect:connect, disconnect:disconnect, cmd:cmd, isConnected:function(){ return connected; }, last:function(){ return lastState; }, getUiDoc:getUiDoc, setUiDoc:setUiDoc, on:function(f){ onState = f; }, base:base };
+})();
+
+/* ============================================================================
+   DEMO MODEL — simulated apps so the UI always has something to show
+   ============================================================================ */
+var Demo = (function(){
+  var t = null, t0 = now(), active = false;
+  var apps = [
+    {key:'spotify', name:'Spotify', pid:4101, volume:0.8, muted:false},
+    {key:'chrome', name:'Google Chrome', pid:4120, volume:1.0, muted:false},
+    {key:'zoom', name:'Zoom', pid:4182, volume:1.0, muted:false},
+    {key:'discord', name:'Discord', pid:4210, volume:0.6, muted:true},
+    {key:'music', name:'Music', pid:4290, volume:1.25, muted:false},
+    {key:'system', name:'System Sounds', pid:0, volume:0.5, muted:false}
+  ];
+  var master = {volume:0.72, muted:false};
+  var outputs = [{id:'built-in', name:'Built-in Speakers', default:true}, {id:'airpods', name:'AirPods Pro', default:false}, {id:'hdmi', name:'External Display (HDMI)', default:false}];
+  var ducked = false, preDuck = {}, forced = false;
+  function isCall(k){ return Doc.get().ducking.call_apps.some(function(c){ return k.indexOf(c) >= 0; }); }
+  function duckable(k){ var d = Doc.get().ducking; if (isCall(k)) return false; if (d.duck_all) return k !== 'system'; return d.media_apps.some(function(m){ return k.indexOf(m) >= 0; }); }
+  function state(){
+    var tt = (now() - t0) / 1000;
+    return { version:'demo', backend:'demo', maxGain:2, outputSwitch:true, peaks:true, degraded:false, error:'',
+      apps: apps.map(function(a, i){ var peak = (a.muted || a.volume === 0) ? 0 : clamp((0.45 + 0.4 * Math.sin(tt * (1.3 + i * 0.37)) + 0.1 * Math.sin(tt * 7 + i)) * Math.min(1, a.volume), 0, 1);
+        return {key:a.key, name:a.name, pid:a.pid, volume:a.volume, muted:a.muted, peak:peak, active:true, hasIcon:false, call:isCall(a.key), ducked:ducked && (a.key in preDuck)}; }),
+      master:{volume:master.volume, muted:master.muted}, outputs:outputs.map(function(o){ return Object.assign({}, o); }),
+      ducking:Object.assign({active:ducked}, Doc.get().ducking), profiles:Doc.get().profiles, activeProfile:Doc.get().opts.activeProfile || '', ts:now() };
+  }
+  function tick(){
+    var d = Doc.get().ducking;
+    var live = d.enabled && apps.some(function(a){ return isCall(a.key) && !a.muted && a.volume > 0; });
+    if ((live || forced) && !ducked) duck(); else if (!live && !forced && ducked) unduck();
+    App.applyState(state());
+  }
+  function duck(){ preDuck = {}; var lvl = Doc.get().ducking.level; apps.forEach(function(a){ if (duckable(a.key)){ preDuck[a.key] = a.volume; a.volume = +(a.volume * lvl).toFixed(4); } }); ducked = true; }
+  function unduck(){ apps.forEach(function(a){ if (a.key in preDuck) a.volume = preDuck[a.key]; }); preDuck = {}; ducked = false; }
+  function find(k){ for (var i = 0; i < apps.length; i++) if (apps[i].key === k) return apps[i]; return null; }
+  function cmd(o){
+    var a;
+    switch (o.cmd){
+      case 'set_volume': a = find(o.key); if (a){ a.volume = clamp(o.volume, 0, 2); if (ducked && (o.key in preDuck)) preDuck[o.key] = Math.min(2, a.volume / (Doc.get().ducking.level || 1e-6)); } break;
+      case 'set_mute': a = find(o.key); if (a) a.muted = !!o.muted; break;
+      case 'set_master': if (o.volume != null) master.volume = clamp(o.volume, 0, 1); if (o.muted != null) master.muted = !!o.muted; break;
+      case 'set_output': outputs.forEach(function(x){ x.default = x.id === o.id; }); break;
+      case 'apply_profile': var p = Doc.get().profiles[o.name]; if (p){ Object.keys(p).forEach(function(k){ a = find(k); if (a) a.volume = clamp(p[k], 0, 2); }); Doc.get().opts.activeProfile = o.name; } break;
+      case 'save_profile': Doc.get().profiles[o.name] = apps.reduce(function(m, x){ m[x.key] = +(ducked && (x.key in preDuck) ? preDuck[x.key] : x.volume).toFixed(3); return m; }, {}); Doc.get().opts.activeProfile = o.name; Doc.save(); break;
+      case 'delete_profile': delete Doc.get().profiles[o.name]; if (Doc.get().opts.activeProfile === o.name) Doc.get().opts.activeProfile = ''; Doc.save(); break;
+      case 'force_duck': forced = !!o.on; break;
+      case 'reset_all': apps.forEach(function(x){ x.volume = 1; }); break;
+      case 'unmute_all': apps.forEach(function(x){ x.muted = false; }); break;
+    }
+    tick();
+    return {ok:true};
+  }
+  return { start:function(){ if (active) return; active = true; t = setInterval(tick, 110); tick(); }, stop:function(){ active = false; clearInterval(t); t = null; }, get active(){ return active; }, cmd:cmd, state:state };
+})();
+
+/* ============================================================================
+   SLIDER — 0 … maxGain, notch at 100 %, boost zone, VU, keyboard, wheel
+   ============================================================================ */
+function Slider(el, opts){
+  var self = this; opts = opts || {};
+  this.el = el; this.max = opts.max || 1; this.value = 1; this.muted = false; this.dragging = false; this.onChange = opts.onChange || function(){}; this.onCommit = opts.onCommit || function(){};
+  el.innerHTML = '<div class="tr"><div class="bz"></div><div class="fi"></div><div class="nt"></div></div><div class="vu"><i></i></div><div class="kn"></div><div class="tip"></div>';
+  this.tr = qs('.tr', el); this.fi = qs('.fi', el); this.kn = qs('.kn', el); this.nt = qs('.nt', el); this.bz = qs('.bz', el); this.vu = qs('.vu i', el); this.tip = qs('.tip', el);
+  el.setAttribute('aria-valuemin', '0'); el.setAttribute('aria-valuemax', String(Math.round(this.max * 100)));
+  var start = null;
+  function x2v(x){ var r = self.tr.getBoundingClientRect(); return clamp((x - r.left) / Math.max(1, r.width), 0, 1) * self.max; }
+  el.addEventListener('pointerdown', function(e){
+    if (e.button === 2) return;
+    if (e.button === 1){ e.preventDefault(); return; }
+    e.preventDefault(); el.setPointerCapture(e.pointerId); self.dragging = true; el.classList.add('drag'); el.classList.remove('animate');
+    start = {x:e.clientX, v:self.value}; self.set(self.snap(x2v(e.clientX)), true);
+    try { if (navigator.vibrate) navigator.vibrate(6); } catch(x){}
+  });
+  el.addEventListener('pointermove', function(e){ if (!self.dragging) return; self.set(self.snap(x2v(e.clientX)), true); });
+  var end = function(e){ if (!self.dragging) return; self.dragging = false; el.classList.remove('drag'); el.classList.add('animate'); self.onCommit(self.value, start ? start.v : self.value); start = null; };
+  el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end); el.addEventListener('lostpointercapture', end);
+  el.addEventListener('dblclick', function(){ var v = clamp((UI.dbl || 100) / 100, 0, self.max), old = self.value; self.set(v, true); self.onCommit(v, old); });
+  el.addEventListener('contextmenu', function(e){ e.preventDefault(); var old = self.value; self.set(1, true); self.onCommit(1, old); });
+  el.addEventListener('wheel', function(e){ e.preventDefault(); var step = (e.shiftKey ? 1 : (UI.wheel || 5)) / 100; var old = self.value; self.set(clamp(+(self.value + (e.deltaY < 0 ? step : -step)).toFixed(2), 0, self.max), true); self.onCommit(self.value, old); }, {passive:false});
+  el.addEventListener('keydown', function(e){
+    var step = e.shiftKey ? 0.01 : 0.05, old = self.value, v = null;
+    switch (e.key){
+      case 'ArrowLeft': case 'ArrowDown': v = self.value - step; break;
+      case 'ArrowRight': case 'ArrowUp': v = self.value + step; break;
+      case 'PageDown': v = self.value - 0.2; break;
+      case 'PageUp': v = self.value + 0.2; break;
+      case 'Home': v = 0; break;
+      case 'End': v = self.max; break;
+      case '0': case ' ': v = 1; break;
+      default: return;
+    }
+    e.preventDefault(); self.set(clamp(+v.toFixed(2), 0, self.max), true); self.onCommit(self.value, old);
+  });
+  this.set(1); el.classList.add('animate');
+}
+Slider.prototype.snap = function(v){ var s = (UI.snap || 0) / 100; return (s && Math.abs(v - 1) <= s) ? 1 : v; };
+Slider.prototype.set = function(v, emit){
+  v = clamp(v, 0, this.max);
+  this.value = v;
+  var p = v / this.max * 100;
+  this.fi.style.width = p + '%'; this.kn.style.left = 'calc(8px + (100% - 16px) * ' + (p / 100) + ')';
+  this.tip.style.left = this.kn.style.left; this.tip.textContent = pct(v);
+  this.el.classList.toggle('boost', v > 1.0001);
+  this.el.setAttribute('aria-valuenow', String(Math.round(v * 100))); this.el.setAttribute('aria-valuetext', pct(v));
+  if (this.max > 1){ var nx = 100 / this.max; this.nt.style.left = nx + '%'; this.bz.style.width = (100 - nx) + '%'; this.nt.style.display = ''; this.bz.style.display = ''; } else { this.nt.style.display = 'none'; this.bz.style.display = 'none'; }
+  if (emit) this.onChange(v);
+};
+Slider.prototype.setMax = function(m){ if (m !== this.max){ this.max = m; this.el.setAttribute('aria-valuemax', String(Math.round(m * 100))); this.set(Math.min(this.value, m)); } };
+Slider.prototype.setMuted = function(m){ this.muted = !!m; this.el.classList.toggle('muted', this.muted); };
+Slider.prototype.setPeak = function(p){ this.vu.style.width = (clamp(p, 0, 1) * Math.min(1, this.value) * 100) + '%'; };
+Slider.prototype.shake = function(){ var el = this.el; el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); };
+
+/* ============================================================================
+   APP STATE + MIXER RENDER
+   ============================================================================ */
+var App = (function(){
+  var state = null, rows = {}, masterSl = null, lastSeen = {}, undo = [], filter = '', firstRender = true;
+  var ICON_SPK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="w1" d="M15.5 9.5a3.5 3.5 0 0 1 0 5"/><path class="w2" d="M18 7a7 7 0 0 1 0 10"/></svg>';
+  var ICON_MUTE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 9l5 6M21 9l-5 6"/></svg>';
+
+  function pushUndo(desc, fn){ undo.push({desc:desc, fn:fn, ts:now()}); if (undo.length > 40) undo.shift(); $('qUndo').disabled = false; $('qUndo').title = 'Undo: ' + desc + ' (Z)'; }
+  function doUndo(){ var u = undo.pop(); if (!u){ Toast.show('Nothing to undo'); return; } u.fn(); Toast.show('Undone: ' + u.desc); $('qUndo').disabled = !undo.length; }
+
+  function setVolume(key, v, silent){ v = clamp(v, 0, (state && state.maxGain) || 2); Engine.cmd({cmd:'set_volume', key:key, volume:v}); if (state){ var a = findApp(key); if (a) a.volume = v; } if (!silent) remember(key, v, null); }
+  function setMute(key, m){ Engine.cmd({cmd:'set_mute', key:key, muted:!!m}); var a = findApp(key); if (a) a.muted = !!m; remember(key, null, !!m); }
+  function remember(key, v, m){ var r = Doc.get().remembered; r[key] = r[key] || {}; if (v != null) r[key].volume = +v.toFixed(3); if (m != null) r[key].muted = m; r[key].ts = now(); Doc.save(); }
+  function findApp(key){ if (!state) return null; for (var i = 0; i < state.apps.length; i++) if (state.apps[i].key === key) return state.apps[i]; return null; }
+
+  function sortApps(list){
+    var s = UI.sort || 'name';
+    return list.slice().sort(function(a, b){
+      if (a.key === 'system') return 1; if (b.key === 'system') return -1;
+      if (s === 'loud') return (b.peak * Math.min(1, b.volume)) - (a.peak * Math.min(1, a.volume)) || a.name.localeCompare(b.name);
+      if (s === 'recent') return (lastSeen[b.key] || 0) - (lastSeen[a.key] || 0) || a.name.localeCompare(b.name);
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  function makeRow(a){
+    var row = document.createElement('div'); row.className = 'row'; row.dataset.key = a.key;
+    row.innerHTML = '<div class="name"><b title="' + esc(a.name) + ' (pid ' + a.pid + ')">' + esc(a.name) + '</b><span class="badges"></span><span class="pct">100%</span></div>' +
+      '<div class="ctl"><div class="ico" title="' + esc(a.name) + '"><img alt="" draggable="false"><span class="mono">' + esc(monogram(a.name)) + '</span></div>' +
+      '<button class="ib mute" aria-pressed="false" title="Mute ' + esc(a.name) + '">' + ICON_SPK + '</button>' +
+      '<div class="sl" role="slider" tabindex="0" aria-label="' + esc(a.name) + ' volume"></div></div>';
+    var sl = new Slider(qs('.sl', row), {max:(state && state.maxGain) || 2,
+      onChange:function(v){ var p = qs('.pct', row); p.textContent = pct(v); p.classList.toggle('boost', v > 1.0001); row.classList.toggle('boost', v > 1.0001); setVolume(a.key, v, true); },
+      onCommit:function(v, old){ if (Math.abs(v - old) > 0.0001){ remember(a.key, v, null); pushUndo(a.name + ' → ' + pct(old), function(){ setVolume(a.key, old); }); } }});
+    row._sl = sl;
+    var img = qs('img', row);
+    img.onload = function(){ img.classList.add('ok'); };
+    img.onerror = function(){ img.classList.remove('ok'); img.removeAttribute('src'); };
+    if (a.hasIcon && Engine.isConnected()) img.src = Engine.base() + '/icon/' + encodeURIComponent(a.key) + '?t=' + (a.pid || 0);
+    qs('.mute', row).addEventListener('click', function(){ var m = !row.classList.contains('muted'); setMute(a.key, m); applyRow(row, Object.assign({}, a, {muted:m})); pushUndo((m ? 'mute ' : 'unmute ') + a.name, function(){ setMute(a.key, !m); }); });
+    return row;
+  }
+
+  function applyRow(row, a){
+    var sl = row._sl, p = qs('.pct', row);
+    if (!sl.dragging) sl.set(a.volume);
+    sl.setMuted(a.muted); sl.setPeak(a.muted ? 0 : (a.peak || 0));
+    row.classList.toggle('muted', !!a.muted); row.classList.toggle('ducked', !!a.ducked); row.classList.toggle('boost', a.volume > 1.0001);
+    var mb = qs('.mute', row); mb.classList.toggle('on', !!a.muted); mb.setAttribute('aria-pressed', a.muted ? 'true' : 'false'); mb.innerHTML = a.muted ? ICON_MUTE : ICON_SPK;
+    p.textContent = a.muted ? 'muted' : pct(a.volume); p.classList.toggle('muted', !!a.muted); p.classList.toggle('boost', !a.muted && a.volume > 1.0001); p.style.display = UI.pct ? '' : 'none';
+    var want = a.ducked ? 'DUCKED' : a.call ? 'CALL' : (!a.active ? 'SILENT' : (a.volume > 1.0001 ? 'BOOST' : ''));
+    var bb = qs('.badges', row);
+    if (bb.dataset.v !== want){ bb.dataset.v = want; bb.innerHTML = want ? '<span class="badge ' + (want === 'DUCKED' || want === 'CALL' ? 'on' : '') + '">' + want + '</span>' : ''; }
+    var nm = qs('.name b', row); if (nm.textContent !== a.name) nm.textContent = a.name;
+    var img = qs('img', row);
+    if (a.hasIcon && Engine.isConnected() && !img.getAttribute('src') && !img._tried){ img._tried = true; img.src = Engine.base() + '/icon/' + encodeURIComponent(a.key); }
+  }
+
+  function render(){
+    if (!state) return;
+    var box = $('apps');
+    if (firstRender){ box.innerHTML = ''; firstRender = false; }
+    var q = filter.trim().toLowerCase();
+    var list = sortApps(state.apps).filter(function(a){ return !q || a.name.toLowerCase().indexOf(q) >= 0 || a.key.toLowerCase().indexOf(q) >= 0; });
+    var hide = (UI.hideSilent || 0) * 1000;
+    if (hide) list = list.filter(function(a){ return a.active || (now() - (lastSeen[a.key] || 0)) < hide; });
+    var keep = {};
+    list.forEach(function(a, i){
+      keep[a.key] = true;
+      var row = rows[a.key];
+      if (!row){ row = makeRow(a); rows[a.key] = row; row.style.animationDelay = (Math.min(i, 8) * 45) + 'ms'; }
+      if (row.parentNode !== box || box.children[i] !== row) box.insertBefore(row, box.children[i] || null);
+      row.classList.remove('out');
+      applyRow(row, a);
+    });
+    Object.keys(rows).forEach(function(k){ if (!keep[k]){ var r = rows[k]; delete rows[k]; r.classList.add('out'); setTimeout(function(){ if (r.parentNode) r.parentNode.removeChild(r); }, reduceMotion() ? 0 : 300); } });
+    var empty = qs('.empty', box);
+    if (!list.length){ if (!empty){ empty = document.createElement('div'); empty.className = 'empty'; box.appendChild(empty); }
+      empty.innerHTML = q ? '<b>No app matches “' + esc(q) + '”</b>Clear the filter to see all ' + plural(state.apps.length, 'app') + '.' : '<b>Nothing is playing audio right now.</b>Apps appear here the moment they make a sound.'; }
+    else if (empty) box.removeChild(empty);
+    $('appCount').textContent = state.apps.length ? (q ? list.length + ' of ' : '') + plural(state.apps.length, 'app') + (state.ducking && state.ducking.active ? ' · ducking' : '') : '';
+    // master
+    var m = state.master;
+    if (!masterSl.dragging) masterSl.set(m.volume);
+    masterSl.setMuted(m.muted);
+    var mb = $('masterMute'); mb.classList.toggle('on', !!m.muted); mb.setAttribute('aria-pressed', m.muted ? 'true' : 'false'); mb.innerHTML = m.muted ? ICON_MUTE : ICON_SPK;
+    $('masterPct').textContent = m.muted ? 'muted' : pct(m.volume);
+    // outputs
+    var sel = $('outputSel');
+    if (state.outputSwitch && state.outputs && state.outputs.length){
+      var sig = state.outputs.map(function(o){ return o.id + ':' + o.name + ':' + (o.default ? 1 : 0); }).join('|');
+      if (sel.dataset.sig !== sig){ sel.dataset.sig = sig; sel.innerHTML = state.outputs.map(function(o){ return '<option value="' + esc(o.id) + '"' + (o.default ? ' selected' : '') + '>' + esc(o.name) + '</option>'; }).join(''); }
+      sel.style.display = '';
+    } else sel.style.display = 'none';
+    // ducking badge / quick buttons
+    var dk = state.ducking && state.ducking.active;
+    $('duckBadge').classList.toggle('off', !dk); $('duckBadge').classList.toggle('on', !!dk);
+    $('qDuck').setAttribute('aria-pressed', dk ? 'true' : 'false'); $('qDuck').classList.toggle('pri', !!dk);
+    $('duckState').textContent = dk ? 'active — media lowered' : (state.ducking && state.ducking.enabled ? 'armed — waiting for a call' : 'off');
+    $('duckForce').classList.toggle('on', !!dk); $('duckForce').setAttribute('aria-checked', dk ? 'true' : 'false');
+    var ap = state.activeProfile || UI.activeProfile || '';
+    $('profChip').textContent = ap || 'Profiles'; $('profChip').classList.toggle('on', !!ap);
+  }
+
+  function applyState(s){
+    if (!s) return;
+    var prev = state; state = s;
+    s.apps.forEach(function(a){ if (a.active || !lastSeen[a.key]) lastSeen[a.key] = now(); });
+    if (!prev || prev.maxGain !== s.maxGain){ Object.keys(rows).forEach(function(k){ rows[k]._sl.setMax(s.maxGain); }); }
+    // engine owns profiles + ducking when connected: mirror them locally so they survive offline
+    if (Engine.isConnected() && !UI.forceDemo){
+      if (s.profiles && typeof s.profiles === 'object'){ var d = Doc.get(); var changed = JSON.stringify(d.profiles) !== JSON.stringify(s.profiles); d.profiles = s.profiles; if (changed) Doc.save(); }
+      if (s.ducking){ var dd = Doc.get().ducking; ['enabled','level','duck_all','call_apps','media_apps'].forEach(function(k){ if (s.ducking[k] != null) dd[k] = s.ducking[k]; }); }
+      if (s.activeProfile != null) UI.activeProfile = s.activeProfile;
+    }
+    render();
+    Profiles.renderIfVisible(); Ducking.renderIfVisible();
+  }
+
+  function init(){
+    masterSl = new Slider($('masterSl'), {max:1, onChange:function(v){ $('masterPct').textContent = pct(v); Engine.cmd({cmd:'set_master', volume:v}); }, onCommit:function(v, old){ if (Math.abs(v - old) > 0.0001) pushUndo('output → ' + pct(old), function(){ Engine.cmd({cmd:'set_master', volume:old}); }); }});
+    $('masterMute').innerHTML = ICON_SPK;
+    $('masterMute').addEventListener('click', function(){ var m = !(state && state.master.muted); Engine.cmd({cmd:'set_master', muted:m}); if (state) state.master.muted = m; render(); pushUndo(m ? 'mute output' : 'unmute output', function(){ Engine.cmd({cmd:'set_master', muted:!m}); }); });
+    $('outputSel').addEventListener('change', function(){ Engine.cmd({cmd:'set_output', id:this.value}); Toast.show('Output → ' + this.options[this.selectedIndex].text); });
+    $('search').addEventListener('input', function(){ filter = this.value; $('clearSearch').style.display = filter ? '' : 'none'; render(); });
+    $('clearSearch').addEventListener('click', function(){ $('search').value = ''; filter = ''; this.style.display = 'none'; render(); $('search').focus(); });
+    $('qReset').addEventListener('click', function(){ if (!state) return; var snap = state.apps.map(function(a){ return {k:a.key, v:a.volume}; }); Engine.cmd({cmd:'reset_all'}); pushUndo('all to 100%', function(){ snap.forEach(function(x){ setVolume(x.k, x.v); }); }); Toast.show('Every app set to 100%'); });
+    $('qUnmute').addEventListener('click', function(){ if (!state) return; var snap = state.apps.filter(function(a){ return a.muted; }).map(function(a){ return a.key; }); if (!snap.length){ Toast.show('Nothing is muted'); return; } Engine.cmd({cmd:'unmute_all'}); pushUndo('unmute ' + plural(snap.length, 'app'), function(){ snap.forEach(function(k){ setMute(k, true); }); }); Toast.show(plural(snap.length, 'app') + ' unmuted'); });
+    $('qDuck').addEventListener('click', function(){ var on = this.getAttribute('aria-pressed') !== 'true'; Engine.cmd({cmd:'force_duck', on:on}); Toast.show(on ? 'Ducking media now' : 'Ducking released'); });
+    $('qUndo').addEventListener('click', doUndo);
+    $('qCustom').addEventListener('click', function(){ Customize.enter(); });
+    Engine.on(applyState);
+  }
+  return { init:init, applyState:applyState, render:render, state:function(){ return state; }, undo:doUndo, setVolume:setVolume, setMute:setMute, findApp:findApp, rows:rows };
+})();
+
+/* ============================================================================
+   PROFILES
+   ============================================================================ */
+var Profiles = (function(){
+  var selected = '';
+  function names(){ return Object.keys(Doc.get().profiles).sort(function(a, b){ return a.localeCompare(b); }); }
+  function visible(){ return $('page-profiles').classList.contains('on'); }
+  function render(){
+    var list = $('profList'), ap = (App.state() && App.state().activeProfile) || UI.activeProfile || '';
+    var ns = names();
+    if (!ns.length){ list.innerHTML = '<div class="empty"><b>No profiles yet.</b>Set your sliders the way you like, then “Save current as…”.</div>'; }
+    else list.innerHTML = ns.map(function(n, i){ var p = Doc.get().profiles[n]; var k = Object.keys(p).length; return '<div class="li' + (n === ap ? ' on' : '') + (n === selected ? ' sel' : '') + '" data-n="' + esc(n) + '" style="animation-delay:' + (i * 40) + 'ms"><div class="l"><b>' + esc(n) + '</b><small>' + plural(k, 'app') + (n === ap ? ' · active' : '') + '</small></div><button class="btn sm' + (n === ap ? ' pri' : '') + '" data-apply="' + esc(n) + '">' + (n === ap ? 'Active' : 'Apply') + '</button></div>'; }).join('');
+    if (!selected || ns.indexOf(selected) < 0) selected = ns[0] || '';
+    qsa('.li', list).forEach(function(li){ li.addEventListener('click', function(e){ if (e.target.dataset.apply) return; selected = li.dataset.n; render(); }); });
+    qsa('[data-apply]', list).forEach(function(b){ b.addEventListener('click', function(){ apply(b.dataset.apply); }); });
+    var det = $('profDetail'), p = Doc.get().profiles[selected];
+    var st = App.state();
+    if (!p){ det.innerHTML = '<div class="empty">Select a profile.</div>'; }
+    else {
+      var keys = Object.keys(p);
+      det.innerHTML = '<div class="li"><div class="l"><b>' + esc(selected) + '</b><small>' + plural(keys.length, 'app') + ' · ' + (st ? keys.filter(function(k){ return App.findApp(k); }).length + ' running now' : '') + '</small></div></div>' +
+        (keys.length ? keys.map(function(k){ var a = App.findApp(k); return '<div class="li"><div class="l"><b>' + esc(a ? a.name : k) + '</b><small>' + (a ? 'running' : 'not running — applied when it starts') + '</small></div><div style="width:120px"><div class="meter"><i style="width:' + (clamp(p[k], 0, 2) / 2 * 100) + '%"></i></div></div><span style="min-width:42px;text-align:right">' + pct(p[k]) + '</span></div>'; }).join('') : '<div class="empty">Empty profile — “Update with current levels” fills it.</div>');
+    }
+    ['profApply','profUpdate','profRename','profDelete'].forEach(function(id){ $(id).disabled = !p; });
+  }
+  function apply(n){ if (!Doc.get().profiles[n]) return; var st = App.state(); var snap = st ? st.apps.map(function(a){ return {k:a.key, v:a.volume}; }) : []; Engine.cmd({cmd:'apply_profile', name:n}); UI.activeProfile = n; Doc.save(); App.render(); render(); Toast.show('Profile “' + n + '” applied', 'Undo', function(){ snap.forEach(function(x){ App.setVolume(x.k, x.v); }); }); }
+  function saveAs(){ Sheet.prompt('Save profile', 'Every running app’s current level is stored under this name.', '', function(n){ n = String(n || '').trim(); if (!n) return false; if (Doc.get().profiles[n]) { Sheet.confirm('Replace “' + n + '”?', 'A profile with that name exists. Replace its levels with the current ones?', 'Replace', function(){ doSave(n); }); return true; } doSave(n); return true; }); }
+  function doSave(n){ var st = App.state(); var snap = st ? st.apps.reduce(function(m, a){ m[a.key] = +a.volume.toFixed(3); return m; }, {}) : {}; Doc.get().profiles[n] = snap; UI.activeProfile = n; selected = n; Doc.save(); Engine.cmd({cmd:'save_profile', name:n}); render(); App.render(); Toast.show('Saved “' + n + '” (' + plural(Object.keys(snap).length, 'app') + ')'); }
+  function update(){ if (!selected) return; doSave(selected); }
+  function rename(){ if (!selected) return; var old = selected; Sheet.prompt('Rename profile', '', old, function(n){ n = String(n || '').trim(); if (!n || n === old) return !!n; if (Doc.get().profiles[n]) return false; var p = Doc.get().profiles; p[n] = p[old]; delete p[old]; if (UI.activeProfile === old) UI.activeProfile = n; selected = n; Doc.save(); Engine.cmd({cmd:'delete_profile', name:old}).then(function(){ Engine.cmd({cmd:'save_profile', name:n}); }); render(); App.render(); Toast.show('Renamed to “' + n + '”'); return true; }); }
+  function del(){ if (!selected) return; var n = selected; Sheet.confirm('Delete “' + n + '”?', 'This removes the profile. Your current levels are not changed.', 'Delete', function(){ var bak = Doc.get().profiles[n]; delete Doc.get().profiles[n]; if (UI.activeProfile === n) UI.activeProfile = ''; Doc.save(); Engine.cmd({cmd:'delete_profile', name:n}); selected = ''; render(); App.render(); Toast.show('Deleted “' + n + '”', 'Undo', function(){ Doc.get().profiles[n] = bak; Doc.save(); Engine.cmd({cmd:'save_profile', name:n}); render(); }); }); }
+  function menu(){ var ns = names(); var ap = UI.activeProfile || ''; var btns = ns.map(function(n){ return {label:(n === ap ? '● ' : '') + n, cls:n === ap ? 'pri' : '', fn:function(){ apply(n); }}; }); btns.push({label:'Save current as…', cls:'ghost', fn:saveAs}); Sheet.menu('Profiles', ns.length ? 'One tap sets every running app.' : 'No profiles yet.', btns); }
+  function init(){
+    $('profSave').addEventListener('click', saveAs); $('profApply').addEventListener('click', function(){ if (selected) apply(selected); });
+    $('profUpdate').addEventListener('click', update); $('profRename').addEventListener('click', rename); $('profDelete').addEventListener('click', del);
+    $('profExport').addEventListener('click', function(){ Data.download({v:1, kind:'sounddial-profiles', ts:now(), profiles:Doc.get().profiles}, 'sounddial-profiles.json'); });
+    $('profImport').addEventListener('click', function(){ Data.pickFile(); });
+    $('profChip').addEventListener('click', menu);
+  }
+  var lastSig = '';
+  function sig(){ var st = App.state(); return JSON.stringify([Doc.get().profiles, (st && st.activeProfile) || UI.activeProfile || '', selected, st ? st.apps.map(function(a){ return a.key; }) : []]); }
+  function renderIfVisible(){ if (!visible()) return; var g = sig(); if (g === lastSig) return; lastSig = g; render(); }
+  var _render = render; render = function(){ lastSig = sig(); _render(); };
+  return { init:init, render:function(){ render(); }, renderIfVisible:renderIfVisible, apply:apply, saveAs:saveAs, menu:menu, names:names };
+})();
+
+/* ============================================================================
+   DUCKING
+   ============================================================================ */
+var Ducking = (function(){
+  function d(){ return Doc.get().ducking; }
+  function visible(){ return $('page-ducking').classList.contains('on'); }
+  function push(){ Doc.save(); Engine.cmd({cmd:'set_ducking', enabled:d().enabled, level:d().level, duck_all:d().duck_all, call_apps:d().call_apps, media_apps:d().media_apps}); App.render(); }
+  function tags(box, list, onChange){
+    box.innerHTML = list.map(function(t, i){ return '<span class="tag" style="animation-delay:' + (i * 25) + 'ms">' + esc(t) + '<button aria-label="Remove ' + esc(t) + '" data-i="' + i + '">×</button></span>'; }).join('') + '<input type="text" placeholder="add name, Enter" aria-label="Add app name">';
+    qsa('button', box).forEach(function(b){ b.addEventListener('click', function(){ list.splice(+b.dataset.i, 1); onChange(); }); });
+    var inp = qs('input', box);
+    inp.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ','){ e.preventDefault(); var v = inp.value.trim().toLowerCase().replace(/,+$/, ''); if (!v) return; if (list.indexOf(v) >= 0){ inp.classList.add('bad'); setTimeout(function(){ inp.classList.remove('bad'); }, 300); return; } list.push(v); onChange(); setTimeout(function(){ var n = qs('input', box); if (n) n.focus(); }, 0); } });
+  }
+  function render(){
+    var x = d();
+    $('duckOn').classList.toggle('on', !!x.enabled); $('duckOn').setAttribute('aria-checked', x.enabled ? 'true' : 'false');
+    $('duckAll').classList.toggle('on', !!x.duck_all); $('duckAll').setAttribute('aria-checked', x.duck_all ? 'true' : 'false');
+    $('duckLvl').value = Math.round(x.level * 100); $('duckLvlTxt').textContent = Math.round(x.level * 100);
+    tags($('callTags'), x.call_apps, function(){ push(); render(); });
+    tags($('mediaTags'), x.media_apps, function(){ push(); render(); });
+  }
+  function init(){
+    $('duckOn').addEventListener('click', function(){ d().enabled = !d().enabled; push(); render(); Toast.show(d().enabled ? 'Auto-ducking on' : 'Auto-ducking off'); });
+    $('duckAll').addEventListener('click', function(){ d().duck_all = !d().duck_all; push(); render(); });
+    $('duckLvl').addEventListener('input', function(){ $('duckLvlTxt').textContent = this.value; });
+    $('duckLvl').addEventListener('change', function(){ d().level = clamp(this.value, 0, 100) / 100; push(); });
+    $('duckForce').addEventListener('click', function(){ var on = this.getAttribute('aria-checked') !== 'true'; Engine.cmd({cmd:'force_duck', on:on}); });
+    $('duckDefaults').addEventListener('click', function(){ d().call_apps = DEFAULT_CALL.slice(); d().media_apps = DEFAULT_MEDIA.slice(); push(); render(); Toast.show('Default lists restored'); });
+  }
+  var lastSig = '';
+  function sig(){ return JSON.stringify(Doc.get().ducking); }
+  function renderIfVisible(){ if (!visible()) return; if (document.activeElement && document.activeElement.closest && document.activeElement.closest('.tagin')) return; var g = sig(); if (g === lastSig) return; lastSig = g; render(); }
+  var _render = render; render = function(){ lastSig = sig(); _render(); };
+  return { init:init, render:function(){ render(); }, renderIfVisible:renderIfVisible };
+})();
+
+/* ============================================================================
+   OPTIONS
+   ============================================================================ */
+var Options = (function(){
+  var mq = null;
+  function applyTheme(){
+    var t = UI.theme;
+    if (UI.autoTheme){ try { t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'mono'; } catch(e){} }
+    document.documentElement.setAttribute('data-theme', t);
+    document.documentElement.setAttribute('data-density', UI.density);
+    document.documentElement.setAttribute('data-vu', UI.vu ? 'on' : 'off');
+    document.documentElement.style.setProperty('--t-fast', UI.anim ? '.16s' : '0s');
+    document.documentElement.style.setProperty('--t-mid', UI.anim ? '.28s' : '0s');
+    var meta = qs('meta[name="theme-color"]'); if (meta) meta.setAttribute('content', getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#0e0e0e');
+  }
+  function seg(id, key, after){ var box = $(id); qsa('button', box).forEach(function(b){ b.classList.toggle('on', b.dataset.v === String(UI[key])); b.onclick = function(){ UI[key] = b.dataset.v; Doc.save(); seg(id, key); applyTheme(); if (after) after(); }; }); }
+  function tg(id, key, after){ var b = $(id); b.classList.toggle('on', !!UI[key]); b.setAttribute('aria-checked', UI[key] ? 'true' : 'false'); b.onclick = function(){ UI[key] = !UI[key]; Doc.save(); tg(id, key, after); applyTheme(); if (after) after(); }; }
+  function num(id, key, min, max, after){ var el = $(id); el.value = UI[key]; el.onchange = function(){ var v = clamp(this.value, min, max); if (String(v) !== String(this.value)){ this.value = v; } UI[key] = +v; Doc.save(); if (after) after(); }; }
+  function render(){
+    seg('themeSeg', 'theme'); seg('densSeg', 'density'); seg('sortSeg', 'sort', App.render);
+    tg('optVu', 'vu'); tg('optPct', 'pct', App.render); tg('optAnim', 'anim'); tg('optAuto', 'autoTheme'); tg('optToast', 'toasts'); tg('optDemo', 'forceDemo', function(){ Engine.disconnect(); Engine.connect(); });
+    num('optSnap', 'snap', 0, 10, function(){ $('snapTxt').textContent = UI.snap; }); $('snapTxt').textContent = UI.snap; $('optSnap').oninput = function(){ $('snapTxt').textContent = this.value; };
+    num('optWheel', 'wheel', 1, 25); num('optDbl', 'dbl', 0, 200); num('optHide', 'hideSilent', 0, 120, App.render); num('optPoll', 'poll', 200, 5000, function(){ Engine.disconnect(); Engine.connect(); });
+    $('optEngine').value = UI.engine; $('optEngine').onchange = function(){ var v = this.value.trim() || DEFAULT_OPTS.engine; if (!/^https?:\/\//.test(v)) v = 'http://' + v; this.value = v; UI.engine = v; UI.engineOverride = (v !== DEFAULT_OPTS.engine); Doc.save(); Engine.disconnect(); Engine.connect(); Toast.show('Engine → ' + v); };
+    $('optReconnect').onclick = function(){ Engine.disconnect(); Engine.connect(); Toast.show('Reconnecting…'); };
+    $('optReset').onclick = function(){ Sheet.confirm('Reset options?', 'Theme, density, behaviour and engine settings go back to defaults. Profiles and ducking lists are kept.', 'Reset', function(){ var keep = {layout:UI.layout, activeProfile:UI.activeProfile}; Object.keys(DEFAULT_OPTS).forEach(function(k){ UI[k] = clone(DEFAULT_OPTS[k]); }); Object.assign(UI, keep); Doc.save(); applyTheme(); render(); App.render(); Toast.show('Options reset'); }); };
+    renderEngineInfo();
+    applyTheme();
+  }
+  function renderEngineInfo(){
+    var s = Engine.last(), box = $('engineInfo'); if (!box) return;
+    var rows = [['Connection', Engine.isConnected() ? 'live (SSE)' : (Demo.active ? 'demo (engine not found)' : 'connecting…')], ['Address', Engine.base()]];
+    if (s){ rows.push(['Backend', s.backend + (s.degraded ? ' (master only)' : '')], ['Engine version', s.version], ['Max per-app gain', pct(s.maxGain)], ['Output switching', s.outputSwitch ? 'yes' : 'no'], ['Level meters', s.peaks ? 'yes' : 'no']); if (s.error) rows.push(['Note', s.error]); }
+    box.innerHTML = rows.map(function(r){ return '<span>' + esc(r[0]) + '</span><span>' + esc(r[1]) + '</span>'; }).join('');
+  }
+  function init(){
+    try { mq = matchMedia('(prefers-color-scheme: light)'); var f = function(){ if (UI.autoTheme) applyTheme(); }; if (mq.addEventListener) mq.addEventListener('change', f); else if (mq.addListener) mq.addListener(f); } catch(e){}
+    render();
+  }
+  return { init:init, render:render, applyTheme:applyTheme, renderEngineInfo:renderEngineInfo };
+})();
+
+/* ============================================================================
+   DATA — lamps, backup, import with preview, partial export, delete all
+   ============================================================================ */
+var Data = (function(){
+  var pending = null;
+  function labelFor(n){ return Storage.tiers[n] ? Storage.tiers[n].label : n; }
+  function renderLamps(){
+    var box = $('lamps'); if (!box) return;
+    var okc = 0;
+    box.innerHTML = Storage.order.map(function(n){ var h = Storage.health[n]; var ok = h && h.ok; if (ok) okc++; var t = Storage.tiers[n];
+      return '<div class="lampc ' + (h ? (ok ? 'ok' : 'bad') : '') + '" title="' + esc(ok ? 'Verified by writing and reading back' : (h ? t.explain : 'Not checked yet')) + '"><i></i><div><div>' + esc(t.label) + (n === UI.prefTier ? ' ★' : '') + '</div><small>' + esc(h ? (ok ? 'verified ' + fmtTime(h.ts) : 'unavailable') : 'checking…') + '</small></div></div>'; }).join('');
+    $('storeSummary').textContent = okc + ' of ' + Storage.order.length + ' places healthy';
+    var sel = $('prefTier'); if (sel.options.length !== Storage.order.length){ sel.innerHTML = Storage.order.map(function(n){ return '<option value="' + n + '">' + esc(labelFor(n)) + '</option>'; }).join(''); }
+    sel.value = UI.prefTier;
+    var pref = Storage.health[UI.prefTier];
+    if (pref && !pref.ok && !renderLamps._warned){ renderLamps._warned = true; Toast.show('Preferred place “' + labelFor(UI.prefTier) + '” is unhealthy — saving elsewhere'); }
+    var lw = Storage.lastWrite, log = $('backupLog'), d = Doc.get();
+    log.innerHTML = '<span>Last save</span><span>' + (lw ? fmtTime(lw.ts) + ' → ' + lw.tiers.map(labelFor).join(', ') : '—') + '</span>' +
+      '<span>Automatic backups</span><span>' + (d.backups.length ? d.backups.slice().reverse().map(function(b){ return esc(b.why) + ' · ' + fmtTime(b.ts); }).join('<br>') : 'none yet') + '</span>' +
+      '<span>Profiles</span><span>' + Object.keys(d.profiles).length + '</span><span>Remembered levels</span><span>' + Object.keys(d.remembered).length + '</span>';
+  }
+  function fullDoc(){ var d = Doc.get(); return {v:1, kind:'sounddial-backup', app:'SoundDial', ts:now(), opts:d.opts, profiles:d.profiles, ducking:d.ducking, remembered:d.remembered, engine:(Engine.last() ? {backend:Engine.last().backend, version:Engine.last().version} : null)}; }
+  function download(obj, name){
+    var s = JSON.stringify(obj, null, 2);
+    try { var blob = new Blob([s], {type:'application/json'}); var u = URL.createObjectURL(blob); var a = document.createElement('a'); a.href = u; a.download = name; document.body.appendChild(a); a.click(); setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(u); }, 400); return true; }
+    catch(e){ Sheet.text('Copy your backup', 'This browser could not save a file. Copy the text below and keep it somewhere safe.', s); return false; }
+  }
+  function autoBackup(why){ var d = Doc.get(); d.backups.push({ts:now(), why:why, doc:JSON.stringify(fullDoc())}); d.backups = d.backups.slice(-8); Doc.save(); }
+  function exportAll(){ autoBackup('manual export'); if (download(fullDoc(), 'sounddial-backup-' + new Date().toISOString().slice(0, 10) + '.json')) Toast.show('Backup downloaded'); renderLamps(); }
+  function pickFile(){ $('fileIn').value = ''; $('fileIn').click(); }
+  function analyse(obj){
+    if (!obj || typeof obj !== 'object') throw new Error('Not a SoundDial file');
+    var d = Doc.get(), res = {profilesNew:[], profilesChanged:[], profilesSame:[], opts:false, ducking:false, remembered:0, problems:[]};
+    var profs = obj.profiles || (obj.kind === 'sounddial-profiles' ? obj.profiles : null);
+    if (profs && typeof profs === 'object'){ Object.keys(profs).forEach(function(n){ var p = profs[n]; if (!p || typeof p !== 'object'){ res.problems.push('profile “' + n + '” is damaged'); return; } var clean = {}; Object.keys(p).forEach(function(k){ var v = +p[k]; if (isNaN(v)) res.problems.push('“' + n + '” → ' + k + ' is not a number'); else clean[k] = clamp(v, 0, 2); }); profs[n] = clean; if (!d.profiles[n]) res.profilesNew.push(n); else if (JSON.stringify(d.profiles[n]) !== JSON.stringify(clean)) res.profilesChanged.push(n); else res.profilesSame.push(n); }); }
+    else if (!obj.opts && !obj.ducking) throw new Error('No profiles, options or ducking rules found in this file');
+    if (obj.opts && typeof obj.opts === 'object') res.opts = true;
+    if (obj.ducking && typeof obj.ducking === 'object') res.ducking = true;
+    if (obj.remembered && typeof obj.remembered === 'object') res.remembered = Object.keys(obj.remembered).length;
+    return res;
+  }
+  function preview(obj, res){
+    pending = {obj:obj, res:res};
+    var lines = [];
+    if (res.profilesNew.length) lines.push('<b>' + plural(res.profilesNew.length, 'new profile') + '</b>: ' + esc(res.profilesNew.join(', ')));
+    if (res.profilesChanged.length) lines.push('<b>' + plural(res.profilesChanged.length, 'profile') + ' will be updated</b>: ' + esc(res.profilesChanged.join(', ')));
+    if (res.profilesSame.length) lines.push(plural(res.profilesSame.length, 'identical profile') + ' skipped');
+    if (res.opts) lines.push('Options will be replaced (layout and engine address included)');
+    if (res.ducking) lines.push('Ducking rules will be replaced');
+    if (res.remembered) lines.push(plural(res.remembered, 'remembered level') + ' merged (newest wins)');
+    if (res.problems.length) lines.push('<b>Could not read:</b> ' + esc(res.problems.join('; ')));
+    if (!lines.length) lines.push('Nothing in this file differs from what you have.');
+    $('importPreviewTxt').innerHTML = lines.join('<br>'); $('importPreview').classList.remove('off');
+    $('importConfirm').disabled = !(res.profilesNew.length || res.profilesChanged.length || res.opts || res.ducking || res.remembered);
+    Bar.go('data');
+  }
+  function confirmImport(){
+    if (!pending) return; var obj = pending.obj, res = pending.res, d = Doc.get();
+    autoBackup('before import');
+    if (obj.profiles){ Object.keys(obj.profiles).forEach(function(n){ if (res.profilesNew.indexOf(n) >= 0 || res.profilesChanged.indexOf(n) >= 0){ d.profiles[n] = obj.profiles[n]; Engine.cmd({cmd:'save_profile', name:n}); } }); }
+    if (res.opts) d.opts = Object.assign({}, DEFAULT_OPTS, obj.opts); UI = d.opts;
+    if (res.ducking){ d.ducking = Object.assign({}, d.ducking, obj.ducking); Engine.cmd({cmd:'set_ducking', enabled:d.ducking.enabled, level:d.ducking.level, duck_all:d.ducking.duck_all, call_apps:d.ducking.call_apps, media_apps:d.ducking.media_apps}); }
+    if (res.remembered) Object.keys(obj.remembered).forEach(function(k){ var mine = d.remembered[k]; if (!mine || (obj.remembered[k].ts || 0) > (mine.ts || 0)) d.remembered[k] = obj.remembered[k]; });
+    Doc.save(); pending = null; $('importPreview').classList.add('off');
+    Options.render(); Customize.applyLayout(); Profiles.render(); Ducking.render(); App.render(); renderLamps();
+    Toast.show('Imported' + (res.problems.length ? ' (' + plural(res.problems.length, 'item') + ' skipped)' : ''));
+  }
+  function wipe(){
+    Sheet.prompt('Delete all local data', 'Type DELETE to confirm. A backup downloads first. Profiles the engine already stores are kept on the engine side until you delete them there too.', '', function(v){ if (String(v).trim() !== 'DELETE') return false; exportAll(); Doc.reset(); UI = Doc.get().opts; Options.render(); Customize.applyLayout(); Profiles.render(); Ducking.render(); App.render(); renderLamps(); Toast.show('Local data deleted'); return true; }, 'Delete');
+  }
+  function init(){
+    Storage.onHealth(debounce(renderLamps, 120));
+    $('dataExport').addEventListener('click', exportAll);
+    $('dataExportSel').addEventListener('click', function(){ download({v:1, kind:'sounddial-profiles', ts:now(), profiles:Doc.get().profiles}, 'sounddial-profiles.json'); Toast.show('Profiles exported'); });
+    $('dataImport').addEventListener('click', pickFile);
+    $('dataCopy').addEventListener('click', function(){ var s = JSON.stringify(fullDoc(), null, 2); var done = function(){ Toast.show('Backup copied to clipboard'); }; try { navigator.clipboard.writeText(s).then(done, function(){ Sheet.text('Copy your backup', 'Select all and copy.', s); }); } catch(e){ Sheet.text('Copy your backup', 'Select all and copy.', s); } });
+    $('importConfirm').addEventListener('click', confirmImport);
+    $('importCancel').addEventListener('click', function(){ pending = null; $('importPreview').classList.add('off'); });
+    $('dataWipe').addEventListener('click', wipe);
+    $('prefTier').addEventListener('change', function(){ UI.prefTier = this.value; Doc.save(); renderLamps(); });
+    $('fileIn').addEventListener('change', function(){ var f = this.files && this.files[0]; if (!f) return; var r = new FileReader(); r.onload = function(){ try { var obj = JSON.parse(r.result); preview(obj, analyse(obj)); } catch(e){ Toast.show('Import failed: ' + (e.message || 'unreadable file')); } }; r.onerror = function(){ Toast.show('Could not read that file'); }; r.readAsText(f); });
+    // drag a backup anywhere onto the page
+    document.addEventListener('dragover', function(e){ e.preventDefault(); });
+    document.addEventListener('drop', function(e){ e.preventDefault(); var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (!f) return; var r = new FileReader(); r.onload = function(){ try { var obj = JSON.parse(r.result); preview(obj, analyse(obj)); } catch(x){ Toast.show('Not a SoundDial backup'); } }; r.readAsText(f); });
+  }
+  return { init:init, renderLamps:renderLamps, exportAll:exportAll, download:download, pickFile:pickFile, autoBackup:autoBackup };
+})();
+
+/* ============================================================================
+   CUSTOMIZE MODE — hold ~180 ms to lift, FLIP siblings, keyboard reorder
+   ============================================================================ */
+var Customize = (function(){
+  var on = false, zone, lifted = null, ph = null, hold = null, startXY = null, off = {x:0, y:0};
+  function cards(){ return qsa('.card.drag-able', zone); }
+  function order(){ return cards().map(function(c){ return c.dataset.card; }); }
+  function applyLayout(){
+    var lay = UI.layout || DEFAULT_OPTS.layout; var map = {}; cards().forEach(function(c){ map[c.dataset.card] = c; });
+    lay.forEach(function(k){ if (map[k]) zone.appendChild(map[k]); });
+  }
+  function flip(fn){
+    var cs = cards().filter(function(c){ return c !== lifted; }), before = {};
+    cs.forEach(function(c){ before[c.dataset.card] = c.getBoundingClientRect().top; });
+    fn();
+    if (reduceMotion() || !UI.anim) return;
+    cs.forEach(function(c){ var d = before[c.dataset.card] - c.getBoundingClientRect().top; if (!d) return; c.style.transition = 'none'; c.style.transform = 'translateY(' + d + 'px)'; void c.offsetWidth; c.style.transition = ''; c.style.transform = ''; });
+  }
+  function enter(){ if (on) return; on = true; document.body.classList.add('customize'); Bar.go('mixer'); Toast.show('Hold a card to move it · ↑↓ on a grip moves with the keyboard'); }
+  function done(){ if (!on) return; on = false; document.body.classList.remove('customize'); UI.layout = order(); Doc.save(); Toast.show('Layout saved'); }
+  function reset(){ UI.layout = DEFAULT_OPTS.layout.slice(); flip(applyLayout); Doc.save(); Toast.show('Default layout'); }
+  function pdown(e){
+    if (!on || e.button === 2) return;
+    var card = e.target.closest('.card.drag-able'); if (!card || !zone.contains(card)) return;
+    if (e.target.closest('.sl, button, select, input')) return;
+    startXY = {x:e.clientX, y:e.clientY}; var c = card;
+    hold = setTimeout(function(){ lift(c, e); }, 180);
+  }
+  function lift(card, e){
+    hold = null; lifted = card; var r = card.getBoundingClientRect(); off = {x:startXY.x - r.left, y:startXY.y - r.top};
+    ph = document.createElement('div'); ph.className = 'card ph'; ph.style.height = r.height + 'px'; ph.style.marginBottom = getComputedStyle(card).marginBottom; card.parentNode.insertBefore(ph, card);
+    card.classList.add('lifted'); card.style.width = r.width + 'px'; card.style.left = r.left + 'px'; card.style.top = r.top + 'px';
+    document.body.style.touchAction = 'none'; zone.classList.add('over');
+    try { if (navigator.vibrate) navigator.vibrate(12); } catch(x){}
+  }
+  function pmove(e){
+    if (hold && startXY && (Math.abs(e.clientX - startXY.x) > 8 || Math.abs(e.clientY - startXY.y) > 8)){ clearTimeout(hold); hold = null; return; }
+    if (!lifted) return; e.preventDefault();
+    lifted.style.left = (e.clientX - off.x) + 'px'; lifted.style.top = (e.clientY - off.y) + 'px';
+    var mid = e.clientY; var cs = cards().filter(function(c){ return c !== lifted; }); var target = null;
+    for (var i = 0; i < cs.length; i++){ var rr = cs[i].getBoundingClientRect(); if (mid < rr.top + rr.height / 2){ target = cs[i]; break; } }
+    if ((target && ph.nextSibling === target) || (!target && !ph.nextSibling)) return;
+    flip(function(){ if (target) zone.insertBefore(ph, target); else zone.appendChild(ph); });
+  }
+  function pup(){
+    if (hold){ clearTimeout(hold); hold = null; }
+    if (!lifted) return;
+    var card = lifted, pr = ph.getBoundingClientRect(), cr = card.getBoundingClientRect();
+    card.style.transition = 'left .25s var(--ease), top .25s var(--ease), transform .25s var(--ease)'; card.style.left = pr.left + 'px'; card.style.top = pr.top + 'px'; card.style.transform = 'none';
+    var fin = function(){ card.style.cssText = ''; card.classList.remove('lifted'); ph.parentNode.replaceChild(card, ph); ph = null; lifted = null; zone.classList.remove('over'); document.body.style.touchAction = ''; UI.layout = order(); Doc.save(); };
+    if (reduceMotion() || !UI.anim || (Math.abs(pr.top - cr.top) < 1 && Math.abs(pr.left - cr.left) < 1)) fin(); else setTimeout(fin, 260);
+  }
+  function key(e){
+    if (!on) return; var grip = e.target.closest('.grip'); if (!grip) return; var card = grip.closest('.card');
+    if (e.key === 'ArrowUp' && card.previousElementSibling){ e.preventDefault(); flip(function(){ zone.insertBefore(card, card.previousElementSibling); }); grip.focus(); UI.layout = order(); Doc.save(); }
+    if (e.key === 'ArrowDown' && card.nextElementSibling){ e.preventDefault(); flip(function(){ zone.insertBefore(card.nextElementSibling, card); }); grip.focus(); UI.layout = order(); Doc.save(); }
+    if (e.key === 'Escape') done();
+  }
+  function init(){
+    zone = $('zoneMixer'); applyLayout();
+    zone.addEventListener('pointerdown', pdown); document.addEventListener('pointermove', pmove, {passive:false}); document.addEventListener('pointerup', pup); document.addEventListener('pointercancel', pup);
+    document.addEventListener('keydown', key);
+    $('custDone').addEventListener('click', done); $('custReset').addEventListener('click', reset);
+  }
+  return { init:init, enter:enter, done:done, toggle:function(){ on ? done() : enter(); }, applyLayout:applyLayout, get on(){ return on; } };
+})();
+
+/* ============================================================================
+   TOUCH BAR — one pill slides between tabs; page fades and rises
+   ============================================================================ */
+var Bar = (function(){
+  var current = 'mixer';
+  function align(){ var t = qs('.tab[aria-selected="true"]', $('bar')); if (!t) return; var p = $('pill'); p.style.left = t.offsetLeft + 'px'; p.style.width = t.offsetWidth + 'px'; }
+  function go(page, silent){
+    var tab = qs('.tab[data-page="' + page + '"]'); if (!tab) return;
+    if (Customize.on && page !== 'mixer') return;
+    qsa('.tab', $('bar')).forEach(function(t){ t.setAttribute('aria-selected', t === tab ? 'true' : 'false'); t.tabIndex = t === tab ? 0 : -1; });
+    qsa('.page').forEach(function(p){ var onp = p.id === 'page-' + page; if (onp){ p.classList.remove('on'); void p.offsetWidth; p.classList.add('on'); } else p.classList.remove('on'); });
+    current = page; align();
+    if (page === 'profiles') Profiles.render(); if (page === 'ducking') Ducking.render(); if (page === 'options') Options.render(); if (page === 'data') Data.renderLamps();
+    if (!silent){ UI.page = page; Doc.save(); }
+    window.scrollTo({top:0, behavior:(reduceMotion() || !UI.anim) ? 'auto' : 'smooth'});
+  }
+  function init(){
+    qsa('.tab', $('bar')).forEach(function(t){ t.addEventListener('click', function(){ go(t.dataset.page); }); t.addEventListener('keydown', function(e){ var tabs = qsa('.tab', $('bar')), i = tabs.indexOf(t); if (e.key === 'ArrowRight'){ tabs[(i + 1) % tabs.length].focus(); tabs[(i + 1) % tabs.length].click(); } if (e.key === 'ArrowLeft'){ tabs[(i - 1 + tabs.length) % tabs.length].focus(); tabs[(i - 1 + tabs.length) % tabs.length].click(); } }); });
+    window.addEventListener('resize', align);
+    try { new ResizeObserver(align).observe($('bar')); } catch(e){}
+    setTimeout(align, 50);
+  }
+  return { init:init, go:go, align:align, current:function(){ return current; } };
+})();
+
+/* ============================================================================
+   SHEETS + TOASTS
+   ============================================================================ */
+var Sheet = (function(){
+  var open = false, lastFocus = null, onClose = null;
+  function show(title, text, btns, input, onEnter){
+    lastFocus = document.activeElement;
+    $('sheetTitle').textContent = title; $('sheetText').textContent = text || ''; $('sheetText').style.display = text ? '' : 'none';
+    var inp = $('sheetInput'); inp.classList.toggle('off', input == null); inp.value = input || ''; inp.onkeydown = function(e){ if (e.key === 'Enter' && onEnter){ e.preventDefault(); onEnter(); } };
+    var bb = $('sheetBtns'); bb.innerHTML = '';
+    btns.forEach(function(b){ var el = document.createElement('button'); el.className = 'btn ' + (b.cls || ''); el.textContent = b.label; el.addEventListener('click', function(){ var keep = b.fn ? b.fn() : undefined; if (keep !== false) hide(); }); bb.appendChild(el); });
+    $('ov').classList.add('on'); $('sheet').classList.add('on'); open = true;
+    setTimeout(function(){ (input != null ? inp : bb.firstChild).focus(); }, 60);
+  }
+  function hide(){ $('ov').classList.remove('on'); $('sheet').classList.remove('on'); open = false; if (onClose) onClose(); onClose = null; if (lastFocus && lastFocus.focus) try { lastFocus.focus(); } catch(e){} }
+  function prompt(title, text, value, fn, okLabel){
+    var ok = function(){ var v = $('sheetInput').value; var r = fn(v); if (r === false){ var i = $('sheetInput'); i.classList.remove('bad'); void i.offsetWidth; i.classList.add('bad'); return false; } return true; };
+    show(title, text, [{label:okLabel || 'Save', cls:'pri', fn:ok}, {label:'Cancel', cls:'ghost'}], value || '', function(){ if (ok() !== false) hide(); });
+  }
+  function confirm(title, text, okLabel, fn){ show(title, text, [{label:okLabel || 'OK', cls:'pri', fn:fn}, {label:'Cancel', cls:'ghost'}]); }
+  function menu(title, text, items){ show(title, text, items.concat([{label:'Close', cls:'ghost'}])); }
+  function text(title, msg, body){ show(title, msg, [{label:'Close', cls:'pri'}]); var ta = document.createElement('textarea'); ta.className = 'ta'; ta.readOnly = true; ta.value = body; $('sheetBtns').parentNode.insertBefore(ta, $('sheetBtns')); onClose = function(){ ta.parentNode.removeChild(ta); }; setTimeout(function(){ ta.focus(); ta.select(); }, 80); }
+  function init(){ $('ov').addEventListener('click', hide); }
+  return { init:init, prompt:prompt, confirm:confirm, menu:menu, text:text, hide:hide, get open(){ return open; } };
+})();
+
+var Toast = (function(){
+  function show(msg, actionLabel, actionFn, ms){
+    if (!UI.toasts && !actionLabel) return;
+    var box = $('toasts'); while (box.children.length > 2) box.removeChild(box.firstChild);
+    var t = document.createElement('div'); t.className = 'toast'; t.innerHTML = '<span>' + esc(msg) + '</span>' + (actionLabel ? '<button>' + esc(actionLabel) + '</button>' : '');
+    if (actionLabel) qs('button', t).addEventListener('click', function(){ try { actionFn && actionFn(); } finally { kill(); } });
+    box.appendChild(t);
+    var tm = setTimeout(kill, ms || (actionLabel ? 6000 : 2600));
+    function kill(){ clearTimeout(tm); t.classList.add('out'); setTimeout(function(){ if (t.parentNode) t.parentNode.removeChild(t); }, reduceMotion() ? 0 : 300); }
+  }
+  return { show:show };
+})();
+
+/* ============================================================================
+   KEYBOARD + MENU
+   ============================================================================ */
+function initKeys(){
+  document.addEventListener('keydown', function(e){
+    var tag = (e.target.tagName || '').toLowerCase();
+    if (e.key === 'Escape'){ if (Sheet.open){ Sheet.hide(); return; } if (Customize.on){ Customize.done(); return; } if ($('search').value && document.activeElement === $('search')){ $('search').value = ''; $('clearSearch').click(); return; } }
+    if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.target.classList && e.target.classList.contains('sl')) return;
+    var pages = ['mixer','profiles','ducking','options','data'];
+    if (/^[1-5]$/.test(e.key)){ Bar.go(pages[+e.key - 1]); return; }
+    switch (e.key.toLowerCase()){
+      case '/': e.preventDefault(); Bar.go('mixer'); $('search').focus(); break;
+      case 'm': $('masterMute').click(); break;
+      case 'z': App.undo(); break;
+      case 'p': Profiles.menu(); break;
+      case 'c': Customize.toggle(); break;
+      case 'd': $('qDuck').click(); break;
+      case '?': Bar.go('options'); break;
+    }
+  });
+  $('menuBtn').addEventListener('click', function(){
+    var st = App.state(); var dk = st && st.ducking && st.ducking.enabled;
+    Sheet.menu('SoundDial', Engine.isConnected() ? 'Engine connected.' : 'Engine not found — demo mode.', [
+      {label:(dk ? '● ' : '') + 'Auto-ducking', fn:function(){ $('duckOn').click(); }},
+      {label:'All apps to 100%', fn:function(){ $('qReset').click(); }},
+      {label:'Unmute all', fn:function(){ $('qUnmute').click(); }},
+      {label:'Customize layout', fn:function(){ Customize.enter(); }},
+      {label:'Backup everything', fn:function(){ Data.exportAll(); }},
+      {label:'Reconnect engine', fn:function(){ Engine.disconnect(); Engine.connect(); }}
+    ]);
+  });
+}
+
+/* ============================================================================
+   BOOT
+   ============================================================================ */
+function boot(){
+  try {
+    Sheet.init(); Bar.init();
+    Storage.load().then(function(loaded){
+      Doc.merge(loaded); UI = Doc.get().opts;
+      Options.init(); App.init(); Profiles.init(); Ducking.init(); Data.init(); Customize.init(); initKeys();
+      Bar.go(UI.page || 'mixer', true);
+      Engine.connect();
+      window.addEventListener('offline', function(){ qsa('[data-needs-net]').forEach(function(el){ el.disabled = true; }); });
+      window.addEventListener('online', function(){ qsa('[data-needs-net]').forEach(function(el){ el.disabled = false; }); });
+      window.addEventListener('beforeunload', function(){ Doc.get().ts = now(); try { localStorage.setItem(KEY, JSON.stringify(Doc.get())); } catch(e){} });
+      document.addEventListener('visibilitychange', function(){ if (!document.hidden && !Engine.isConnected() && !UI.forceDemo) Engine.connect(); });
+      setTimeout(function(){ Storage.probeAll().then(Data.renderLamps); }, 800);
+      if (!loaded) setTimeout(function(){ Toast.show('Welcome. Everything stays on this device.'); }, 600);
+    }).catch(function(e){ fail(e); });
+  } catch(e){ fail(e); }
+  function fail(e){
+    var box = document.createElement('div'); box.className = 'card'; box.style.margin = '12px 16px'; box.innerHTML = '<div class="inner"><b>SoundDial hit an error while starting.</b><br><small>' + esc(e && (e.stack || e.message) || e) + '</small><br><br>Reload the page. If it keeps happening, open Data → Delete all local data (a backup downloads first).</div>';
+    document.body.insertBefore(box, document.body.firstChild);
+  }
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+
+})();
+</script>
+</body>
+</html>
