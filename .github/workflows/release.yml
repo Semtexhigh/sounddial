@@ -1,0 +1,125 @@
+# Builds SoundDial desktop installers for macOS (Apple Silicon + Intel), Windows and Linux,
+# and attaches them to a GitHub Release.
+#
+# Trigger: push a tag like v1.0.0, or run manually (workflow_dispatch) for a draft.
+# No Apple signing is needed: the macOS builds are unsigned and ship with a Gatekeeper note.
+# If APPLE_* secrets are ever added, tauri-action signs automatically — nothing else changes.
+
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14        # Apple Silicon
+            target: aarch64-apple-darwin
+            args: --target aarch64-apple-darwin
+            swift_target: arm64-apple-macos14.2
+            label: macOS Apple Silicon
+          - os: macos-13        # Intel
+            target: x86_64-apple-darwin
+            args: --target x86_64-apple-darwin
+            swift_target: x86_64-apple-macos14.2
+            label: macOS Intel
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            args: ""
+            label: Windows
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            args: ""
+            label: Linux
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Linux system deps (Tauri + PulseAudio)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libpulse0 libpulse-dev
+
+      - name: Python deps for the engine
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip pyinstaller pillow
+          if [ "${{ runner.os }}" = "Windows" ]; then python -m pip install pycaw comtypes psutil; fi
+          if [ "${{ runner.os }}" = "Linux" ]; then python -m pip install pulsectl; fi
+
+      - name: Generate icon set
+        shell: bash
+        run: python tools/make_icons.py
+
+      - name: Build engine sidecar
+        shell: bash
+        run: python tools/build_engine.py
+
+      - name: Build macOS Core Audio helper
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p src-tauri/resources
+          swiftc -O -target ${{ matrix.swift_target }} -framework CoreAudio -framework AudioToolbox -framework AppKit \
+                 -o src-tauri/resources/SoundDialHelper macos_helper/SoundDialHelper.swift
+          codesign --force --sign - --identifier com.sounddial.helper src-tauri/resources/SoundDialHelper
+          ls -la src-tauri/resources
+
+      - name: Frontend
+        run: |
+          npm install
+          npm run dist
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Optional signing — leave unset to ship unsigned builds.
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'v__VERSION__' }}
+          releaseName: "SoundDial v__VERSION__"
+          releaseBody: |
+            Per-app volume mixer for macOS, Windows and Linux.
+
+            | Download | For |
+            |---|---|
+            | `SoundDial_*_aarch64.dmg` | macOS on Apple Silicon (M1 and later) |
+            | `SoundDial_*_x64.dmg` | macOS on Intel |
+            | `SoundDial_*_x64-setup.exe` | Windows 10/11 |
+            | `SoundDial_*_amd64.AppImage` / `.deb` | Linux (PulseAudio or PipeWire) |
+
+            **macOS:** the build is not Apple-notarised. First launch: right-click the app → Open → Open, or run
+            `xattr -dr com.apple.quarantine /Applications/SoundDial.app`. Per-app volume needs macOS 14.2+ and the
+            *System Audio Recording* permission, which macOS asks for the first time an app is tapped.
+          releaseDraft: ${{ github.event_name == 'workflow_dispatch' }}
+          prerelease: false
+          args: ${{ matrix.args }}
