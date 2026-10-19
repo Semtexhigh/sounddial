@@ -1,7 +1,7 @@
 # Builds SoundDial desktop installers for macOS (Apple Silicon + Intel), Windows and Linux,
 # and attaches them to a GitHub Release.
 #
-# Trigger: push a tag like v1.0.0, or run manually (workflow_dispatch) for a draft.
+# Trigger: push a tag like v1.0.0, or run manually (workflow_dispatch) to (re)build the release for the current version.
 # No Apple signing is needed: the macOS builds are unsigned and ship with a Gatekeeper note.
 # If APPLE_* secrets are ever added, tauri-action signs automatically — nothing else changes.
 
@@ -26,7 +26,7 @@ jobs:
             args: --target aarch64-apple-darwin
             swift_target: arm64-apple-macos14.2
             label: macOS Apple Silicon
-          - os: macos-13        # Intel
+          - os: macos-15-intel  # Intel (macos-13 was retired by GitHub in Dec 2025)
             target: x86_64-apple-darwin
             args: --target x86_64-apple-darwin
             swift_target: x86_64-apple-macos14.2
@@ -94,16 +94,34 @@ jobs:
           npm install
           npm run dist
 
+      # Optional Apple signing: only exported when the secrets actually exist, otherwise the
+      # bundler sees an empty APPLE_CERTIFICATE and refuses to build. Unsigned is the default.
+      - name: Apple signing (optional)
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          S_CERT: ${{ secrets.APPLE_CERTIFICATE }}
+          S_CERT_PW: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          S_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          S_ID: ${{ secrets.APPLE_ID }}
+          S_PW: ${{ secrets.APPLE_PASSWORD }}
+          S_TEAM: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -n "$S_CERT" ] && [ -n "$S_IDENTITY" ]; then
+            echo "Signing secrets present - builds will be signed."
+            { echo "APPLE_CERTIFICATE<<__EOF__"; echo "$S_CERT"; echo "__EOF__"; } >> "$GITHUB_ENV"
+            echo "APPLE_CERTIFICATE_PASSWORD=$S_CERT_PW" >> "$GITHUB_ENV"
+            echo "APPLE_SIGNING_IDENTITY=$S_IDENTITY" >> "$GITHUB_ENV"
+            [ -n "$S_ID" ] && echo "APPLE_ID=$S_ID" >> "$GITHUB_ENV"
+            [ -n "$S_PW" ] && echo "APPLE_PASSWORD=$S_PW" >> "$GITHUB_ENV"
+            [ -n "$S_TEAM" ] && echo "APPLE_TEAM_ID=$S_TEAM" >> "$GITHUB_ENV"
+          else
+            echo "No signing secrets - shipping unsigned macOS build."
+          fi
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Optional signing — leave unset to ship unsigned builds.
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_type == 'tag' && github.ref_name || 'v__VERSION__' }}
           releaseName: "SoundDial v__VERSION__"
@@ -120,6 +138,6 @@ jobs:
             **macOS:** the build is not Apple-notarised. First launch: right-click the app → Open → Open, or run
             `xattr -dr com.apple.quarantine /Applications/SoundDial.app`. Per-app volume needs macOS 14.2+ and the
             *System Audio Recording* permission, which macOS asks for the first time an app is tapped.
-          releaseDraft: ${{ github.event_name == 'workflow_dispatch' }}
+          releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
