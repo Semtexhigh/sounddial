@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=SoundDial
+GenericName=Per-app volume mixer
+Comment=Control every app's volume independently from the tray
+Exec=__EXEC__
+Icon=sounddial
+Terminal=false
+Categories=AudioVideo;Audio;Mixer;Utility;
+Keywords=volume;mixer;audio;pulseaudio;pipewire;
+StartupNotify=false
