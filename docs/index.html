@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SoundDial — per-app volume mixer</title>
+<meta name="description" content="Control every app's volume independently. macOS, Windows and Linux.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%23111'/%3E%3Cpath d='M6 15.5A5.5 5.5 0 1 1 15.5 15.5' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3Cpath d='M10 10l2.6-2.6' stroke='%23fff' stroke-width='2' stroke-linecap='round'/%3E%3Crect x='16' y='14' width='1.6' height='4' rx='.8' fill='%23fff'/%3E%3Crect x='18.4' y='11' width='1.6' height='7' rx='.8' fill='%23fff'/%3E%3C/svg%3E">
+<style>
+:root{ --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace; --bg:#0e0e0e; --bg2:#161616; --line:#2a2a2a; --line2:#3a3a3a; --fg:#f2f2f2; --fg2:#9a9a9a; --fg3:#5c5c5c; --ink:#fff; --inkfg:#000; --ease:cubic-bezier(.22,1,.36,1); }
+@media (prefers-color-scheme:light){ :root{ --bg:#fafafa; --bg2:#fff; --line:#e2e2e2; --line2:#cfcfcf; --fg:#111; --fg2:#5e5e5e; --fg3:#a3a3a3; --ink:#111; --inkfg:#fff; } }
+*{ box-sizing:border-box; }
+html,body{ margin:0; background:var(--bg); color:var(--fg); font:15px/1.6 var(--mono); font-variant-numeric:tabular-nums; }
+.wrap{ max-width:720px; margin:0 auto; padding:56px 20px 80px; }
+.logo{ width:88px; height:88px; border-radius:22px; display:block; margin-bottom:18px; }
+h1{ font-size:30px; margin:0 0 6px; letter-spacing:-.3px; }
+.sub{ color:var(--fg2); margin:0 0 32px; font-size:15px; }
+.dl{ display:inline-flex; align-items:center; gap:12px; padding:16px 22px; background:var(--ink); color:var(--inkfg); text-decoration:none; border-radius:14px; font-weight:700; transition:transform .16s var(--ease), opacity .16s var(--ease); }
+.dl:hover{ transform:translateY(-1px); } .dl:active{ transform:scale(.97); }
+.dl small{ display:block; font-weight:400; opacity:.75; font-size:12px; }
+.dl svg{ width:22px; height:22px; flex:none; }
+.others{ margin-top:14px; color:var(--fg2); font-size:13px; }
+.others a{ color:var(--fg); }
+.grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:10px; margin-top:36px; }
+.card{ background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:14px 16px; }
+.card b{ display:block; margin-bottom:4px; }
+.card small{ color:var(--fg2); font-size:12.5px; }
+.card a{ color:var(--fg); }
+h2{ font-size:12px; letter-spacing:1.6px; text-transform:uppercase; color:var(--fg3); margin:40px 0 10px; }
+ul{ padding-left:18px; color:var(--fg2); } li{ margin:4px 0; }
+code{ background:var(--bg2); border:1px solid var(--line); padding:1px 6px; border-radius:6px; font-size:13px; }
+.note{ font-size:13px; color:var(--fg2); border:1px dashed var(--line2); border-radius:10px; padding:12px 14px; margin-top:12px; }
+.shot{ width:100%; border-radius:14px; border:1px solid var(--line); margin-top:28px; display:block; }
+footer{ margin-top:48px; color:var(--fg3); font-size:12px; }
+footer a{ color:var(--fg2); }
+#ver{ color:var(--fg3); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <svg class="logo" viewBox="0 0 24 24" aria-hidden="true"><rect width="24" height="24" rx="6" fill="#111"/><path d="M6 15.5A5.5 5.5 0 1 1 15.5 15.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M10 10l2.6-2.6" stroke="#fff" stroke-width="2" stroke-linecap="round"/><rect x="16" y="14" width="1.6" height="4" rx=".8" fill="#fff"/><rect x="18.4" y="11" width="1.6" height="7" rx=".8" fill="#fff"/></svg>
+  <h1>SoundDial</h1>
+  <p class="sub">Per-app volume mixer for macOS, Windows and Linux. Lower Spotify during a call, boost a quiet tab, mute the noisy one. From the menu bar. <span id="ver"></span></p>
+
+  <a class="dl" id="dl" href="https://github.com/Semtexhigh/sounddial/releases/latest">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+    <span><span id="dlTxt">Download</span><small id="dlSub">detecting your system…</small></span>
+  </a>
+  <p class="others">Other systems: <a href="#" id="l-mac-arm">macOS Apple Silicon</a> · <a href="#" id="l-mac-x64">macOS Intel</a> · <a href="#" id="l-win">Windows</a> · <a href="#" id="l-linux-app">Linux AppImage</a> · <a href="#" id="l-linux-deb">Linux .deb</a></p>
+
+  <div class="grid">
+    <div class="card"><b>Per-app sliders</b><small>0–200% on macOS and Linux, each app's own icon on its row, live level meters, mute.</small></div>
+    <div class="card"><b>Auto-ducking</b><small>Music drops when Zoom, Teams, FaceTime, Discord or Slack go live; comes back when the call ends.</small></div>
+    <div class="card"><b>Profiles</b><small>Work, Focus, Chill — or your own. One tap sets every app.</small></div>
+    <div class="card"><b>Output switching</b><small>Master volume and output device from the same panel.</small></div>
+    <div class="card"><b>Mono UI</b><small>Pure greyscale with Light, Graphite, Paper and Contrast variants. Drag cards to rearrange.</small></div>
+    <div class="card"><b>Private</b><small>Everything runs on your machine. No account, no network, no telemetry.</small></div>
+  </div>
+
+  <h2>macOS first launch</h2>
+  <div class="note">The build is not Apple-notarised. Right-click <b>SoundDial.app</b> → Open → Open, or run <code>xattr -dr com.apple.quarantine /Applications/SoundDial.app</code>. Per-app volume needs macOS 14.2 or newer; macOS asks for <i>System Audio Recording</i> permission the first time an app is tapped — that is the OS gate for reading another app's audio.</div>
+
+  <h2>Requirements</h2>
+  <ul>
+    <li>macOS 14.2+ (Sonoma) for per-app control, Apple Silicon or Intel</li>
+    <li>Windows 10 / 11 — per-app volume is capped at 100% by Windows itself</li>
+    <li>Linux with PulseAudio or PipeWire (<code>pipewire-pulse</code>)</li>
+  </ul>
+
+  <footer>Built by its author · <a href="https://github.com/Semtexhigh/sounddial/releases">All releases</a></footer>
+</div>
+<script>
+(function(){
+  var REPO = 'Semtexhigh/sounddial';
+  var ua = navigator.userAgent, plat = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || '';
+  var os = /Mac/i.test(plat) ? 'mac' : /Win/i.test(plat) ? 'win' : /Linux|X11/i.test(plat) ? 'linux' : 'other';
+  var arm = false;
+  function pick(assets){
+    var find = function(re){ for (var i = 0; i < assets.length; i++) if (re.test(assets[i].name)) return assets[i]; return null; };
+    var m = { macArm: find(/aarch64\.dmg$/i), macX64: find(/x64\.dmg$/i), win: find(/setup\.exe$|\.msi$/i), app: find(/\.AppImage$/i), deb: find(/\.deb$/i) };
+    var set = function(id, a){ var el = document.getElementById(id); if (a){ el.href = a.browser_download_url; } else { el.style.opacity = .5; el.title = 'not in this release'; } };
+    set('l-mac-arm', m.macArm); set('l-mac-x64', m.macX64); set('l-win', m.win); set('l-linux-app', m.app); set('l-linux-deb', m.deb);
+    var best = null, label = '';
+    if (os === 'mac'){ best = arm ? (m.macArm || m.macX64) : (m.macX64 || m.macArm); label = 'for macOS · ' + (best === m.macArm ? 'Apple Silicon' : 'Intel'); }
+    else if (os === 'win'){ best = m.win; label = 'for Windows'; }
+    else if (os === 'linux'){ best = m.app || m.deb; label = 'for Linux · ' + (best === m.app ? 'AppImage' : '.deb'); }
+    var dl = document.getElementById('dl');
+    if (best){ dl.href = best.browser_download_url; document.getElementById('dlTxt').textContent = 'Download SoundDial'; document.getElementById('dlSub').textContent = label + ' · ' + (best.size / 1048576).toFixed(1) + ' MB'; }
+    else { document.getElementById('dlTxt').textContent = 'All downloads'; document.getElementById('dlSub').textContent = 'pick your system on the releases page'; }
+  }
+  function detectArm(){
+    // Apple Silicon Macs report a GPU with "Apple" in the renderer string; Intel Macs report Intel/AMD.
+    try { var c = document.createElement('canvas'), gl = c.getContext('webgl'); var d = gl && gl.getExtension('WEBGL_debug_renderer_info'); var r = d ? gl.getParameter(d.UNMASKED_RENDERER_WEBGL) : ''; if (/Apple M|Apple GPU/i.test(r)) arm = true; } catch(e){}
+    if (navigator.userAgentData && navigator.userAgentData.getHighEntropyValues){ return navigator.userAgentData.getHighEntropyValues(['architecture']).then(function(v){ if (v.architecture === 'arm') arm = true; }).catch(function(){}); }
+    return Promise.resolve();
+  }
+  detectArm().then(function(){
+    return fetch('https://api.github.com/repos/' + REPO + '/releases/latest', {headers:{Accept:'application/vnd.github+json'}});
+  }).then(function(r){ return r.json(); }).then(function(rel){
+    if (!rel || !rel.assets) throw new Error('no release');
+    document.getElementById('ver').textContent = rel.tag_name || '';
+    pick(rel.assets);
+  }).catch(function(){
+    document.getElementById('dlTxt').textContent = 'All downloads';
+    document.getElementById('dlSub').textContent = 'opens the releases page';
+    ['l-mac-arm','l-mac-x64','l-win','l-linux-app','l-linux-deb'].forEach(function(id){ document.getElementById(id).href = 'https://github.com/' + REPO + '/releases/latest'; });
+  });
+})();
+</script>
+</body>
+</html>
