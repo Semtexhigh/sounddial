@@ -1,0 +1,64 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "SoundDial",
+  "version": "1.0.0",
+  "identifier": "com.sounddial.desktop",
+  "build": {
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "SoundDial",
+        "url": "index.html",
+        "width": 430,
+        "height": 780,
+        "minWidth": 360,
+        "minHeight": 520,
+        "resizable": true,
+        "decorations": true,
+        "center": true,
+        "visible": true,
+        "alwaysOnTop": false,
+        "skipTaskbar": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src 'self' http://127.0.0.1:47800 http://localhost:47800; img-src 'self' data: blob: http://127.0.0.1:47800 http://localhost:47800; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; font-src 'self' data:"
+    },
+    "macOSPrivateApi": false
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Utility",
+    "shortDescription": "Per-app volume mixer",
+    "longDescription": "Control every app's volume independently from the menu bar / tray. Auto-ducking, profiles, output switching.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "externalBin": ["binaries/sounddial-engine"],
+    "resources": {
+      "resources/*": "resources/"
+    },
+    "macOS": {
+      "minimumSystemVersion": "12.0",
+      "dmg": { "appPosition": { "x": 180, "y": 170 }, "applicationFolderPosition": { "x": 480, "y": 170 }, "windowSize": { "width": 660, "height": 400 } },
+      "entitlements": "entitlements.plist",
+      "signingIdentity": null
+    },
+    "windows": {
+      "nsis": { "installMode": "currentUser", "installerIcon": "icons/icon.ico" },
+      "wix": null
+    },
+    "linux": {
+      "deb": { "depends": ["libpulse0"] },
+      "appimage": { "bundleMediaFramework": false }
+    }
+  }
+}

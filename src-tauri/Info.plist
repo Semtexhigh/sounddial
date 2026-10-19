@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>LSUIElement</key><true/>
+  <key>NSAudioCaptureUsageDescription</key>
+  <string>SoundDial taps each app's audio to control its volume independently. Audio never leaves your Mac.</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>Needed by macOS to allow per-app audio capture. SoundDial does not record anything.</string>
+</dict>
+</plist>
