@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "SoundDial window",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-set-focus",
+    "shell:allow-spawn",
+    "shell:allow-kill",
+    "opener:allow-open-url",
+    { "identifier": "shell:allow-execute", "allow": [{ "name": "binaries/sounddial-engine", "sidecar": true, "args": true }] }
+  ]
+}
