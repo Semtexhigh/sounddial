@@ -41,7 +41,7 @@ Nothing is installed on the user's machine except the app.
 ~15 minutes later the Release page has all installers; `docs/index.html` (GitHub Pages) detects the visitor's OS and offers the right one.
 
 macOS builds are unsigned by design. The workflow signs automatically only if `APPLE_*` secrets exist; nothing else changes.
-First launch on macOS shows *"SoundDial is damaged and can't be opened"* — that is Gatekeeper refusing a non-Apple-signed app, not a broken file. Drag the app into Applications, then run once in Terminal:
+First launch on macOS: the app is ad-hoc signed, not notarised, so macOS says *"Apple could not verify SoundDial"* — open **System Settings → Privacy & Security** and click **Open Anyway**. If an older download says *"damaged"*, drag the app into Applications and run once in Terminal:
 
 ```
 xattr -cr /Applications/SoundDial.app && codesign --force --deep --sign - /Applications/SoundDial.app && open /Applications/SoundDial.app
