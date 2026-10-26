@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "SoundDial",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "identifier": "com.sounddial.desktop",
   "build": {
     "frontendDist": "../dist"
@@ -42,23 +42,48 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": ["binaries/sounddial-engine"],
+    "externalBin": [
+      "binaries/sounddial-engine"
+    ],
     "resources": {
       "resources/*": "resources/"
     },
     "macOS": {
       "minimumSystemVersion": "12.0",
-      "dmg": { "appPosition": { "x": 180, "y": 170 }, "applicationFolderPosition": { "x": 480, "y": 170 }, "windowSize": { "width": 660, "height": 400 } },
+      "dmg": {
+        "appPosition": {
+          "x": 180,
+          "y": 170
+        },
+        "applicationFolderPosition": {
+          "x": 480,
+          "y": 170
+        },
+        "windowSize": {
+          "width": 660,
+          "height": 400
+        }
+      },
       "entitlements": "entitlements.plist",
-      "signingIdentity": null
+      "signingIdentity": "-",
+      "hardenedRuntime": false
     },
     "windows": {
-      "nsis": { "installMode": "currentUser", "installerIcon": "icons/icon.ico" },
+      "nsis": {
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico"
+      },
       "wix": null
     },
     "linux": {
-      "deb": { "depends": ["libpulse0"] },
-      "appimage": { "bundleMediaFramework": false }
+      "deb": {
+        "depends": [
+          "libpulse0"
+        ]
+      },
+      "appimage": {
+        "bundleMediaFramework": false
+      }
     }
   }
 }

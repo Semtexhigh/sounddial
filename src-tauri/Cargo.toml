@@ -1,6 +1,6 @@
 [package]
 name = "sounddial"
-version = "1.0.0"
+version = "1.0.1"
 description = "Per-app volume mixer"
 authors = ["the SoundDial author"]
 edition = "2021"
