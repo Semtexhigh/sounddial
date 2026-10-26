@@ -159,7 +159,7 @@ footer a{color:var(--fg2);text-decoration:none}
   </div>
 
   <h2>macOS first launch</h2>
-  <div class="note">macOS shows <b>"SoundDial is damaged and can't be opened"</b> for any app that is not Apple-signed. The app is fine — clear the flag once. Drag SoundDial into Applications, then paste this in Terminal:<br>
+  <div class="note">The app is not Apple-notarised, so macOS asks before the first launch. If it says <b>"Apple could not verify SoundDial"</b>: open <b>System Settings → Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>. If it says <b>"SoundDial is damaged"</b> (older downloads), drag SoundDial into Applications and paste this in Terminal once:<br>
     <code>xattr -cr /Applications/SoundDial.app &amp;&amp; codesign --force --deep --sign - /Applications/SoundDial.app &amp;&amp; open /Applications/SoundDial.app</code><br>
     <span style="display:block;margin-top:8px">Per-app volume needs macOS 14.2 or newer. The first time an app is tapped, macOS asks for <i>System Audio Recording</i> permission — that is the OS gate for reading another app's audio.</span>
   </div>
