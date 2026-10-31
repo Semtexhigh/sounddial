@@ -99,6 +99,10 @@ h2{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--fg3);m
 .card .n{position:absolute;right:16px;top:12px;font-size:40px;font-weight:800;color:rgba(255,255,255,.06);transform:translateZ(6px)}
 .note{font-size:13px;color:var(--fg2);border:1px dashed rgba(255,255,255,.25);border-radius:16px;padding:16px 18px;background:var(--glass);transform:translateZ(14px)}
 .note code{background:#000;border:1px solid var(--line);padding:2px 8px;border-radius:8px;font-size:12.5px;color:#fff;display:inline-block;margin-top:6px;user-select:all}
+.cmd{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.cmd code{margin:0;padding:10px 14px;font-size:14px;flex:1 1 auto}
+.cmd button{font:inherit;font-weight:700;padding:10px 16px;border-radius:10px;border:0;background:#fff;color:#000;cursor:pointer;transition:transform .2s var(--ease)}
+.cmd button:hover{transform:scale(1.05)}
 ul{padding-left:18px;color:var(--fg2)} li{margin:4px 0}
 footer{margin-top:70px;color:var(--fg3);font-size:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
 footer a{color:var(--fg2);text-decoration:none}
@@ -158,9 +162,9 @@ footer a{color:var(--fg2);text-decoration:none}
     <div class="card" data-hover><span class="n">06</span><b>Private</b><small>Everything runs on your machine. No account, no network, no telemetry.</small></div>
   </div>
 
-  <h2>macOS first launch</h2>
-  <div class="note">The app is not Apple-notarised, so macOS asks before the first launch. If it says <b>"Apple could not verify SoundDial"</b>: open <b>System Settings → Privacy &amp; Security</b>, scroll down and click <b>Open Anyway</b>. If it says <b>"SoundDial is damaged"</b> (older downloads), drag SoundDial into Applications and paste this in Terminal once:<br>
-    <code>xattr -cr /Applications/SoundDial.app &amp;&amp; codesign --force --deep --sign - /Applications/SoundDial.app &amp;&amp; open /Applications/SoundDial.app</code><br>
+  <h2 id="macsec">macOS — install with one command</h2>
+  <div class="note">The Mac build is not Apple-notarised, so a .dmg download is blocked by Gatekeeper ("damaged" / "cannot verify"). Installing from Terminal skips that completely: open <b>Terminal</b>, paste this line, press Enter. It downloads the latest build straight into Applications and opens it.<br>
+    <div class="cmd"><code id="cmd">curl -fsSL https://semtexhigh.github.io/sounddial/install.sh | bash</code><button id="copy" type="button" data-hover>Copy</button></div>
     <span style="display:block;margin-top:8px">Per-app volume needs macOS 14.2 or newer. The first time an app is tapped, macOS asks for <i>System Audio Recording</i> permission — that is the OS gate for reading another app's audio.</span>
   </div>
 
@@ -245,6 +249,7 @@ footer a{color:var(--fg2);text-decoration:none}
   addEventListener('scroll',reveal,{passive:true});addEventListener('resize',reveal);setTimeout(reveal,300);setInterval(reveal,600);
 })();
 
+document.getElementById('copy').addEventListener('click',function(){var t=document.getElementById('cmd').textContent;var b=this;(navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){b.textContent='Copied';setTimeout(function(){b.textContent='Copy';},1500);}).catch(function(){var r=document.createRange();r.selectNodeContents(document.getElementById('cmd'));getSelection().removeAllRanges();getSelection().addRange(r);});});
 /* ============ downloads: detect OS + Apple Silicon, fetch latest release ============ */
 (function(){
   var REPO='Semtexhigh/sounddial';
@@ -261,6 +266,7 @@ footer a{color:var(--fg2);text-decoration:none}
     else if(os==='win'){best=m.win;label='for Windows';}
     else if(os==='linux'){best=m.app||m.deb;label='for Linux · '+(best===m.app?'AppImage':'.deb');}
     var dl=document.getElementById('dl');
+    if(os==='mac'){dl.href='#macsec';document.getElementById('dlTxt').textContent='Install on Mac';document.getElementById('dlSub').textContent='one Terminal command · no Gatekeeper · '+(arm?'Apple Silicon':'Intel');dl.addEventListener('click',function(e){e.preventDefault();document.getElementById('macsec').scrollIntoView({behavior:'smooth'});});return;}
     if(best){dl.href=best.browser_download_url;document.getElementById('dlTxt').textContent='Download SoundDial';document.getElementById('dlSub').textContent=label+' · '+(best.size/1048576).toFixed(1)+' MB';}
     else{document.getElementById('dlTxt').textContent='All downloads';document.getElementById('dlSub').textContent='pick your system on the releases page';}
   }
